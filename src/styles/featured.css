@@ -206,14 +206,8 @@
   height: 100%;
 }
 
-.project-item-line-2-inner {
-  transition: transform 0.45s cubic-bezier(0.35, 0, 0, 1);
-}
-
-.project-item:hover .project-item-line-2-inner,
-.project-item:focus-visible .project-item-line-2-inner {
-  transform: translate3d(1em, 0, 0);
-}
+/* (the hover slide of .project-item-line-2-inner is gsap-driven in
+ * featured.ts — no CSS transition here, it would fight the scroll reveal) */
 
 .project-item:focus-visible {
   outline: 2px solid var(--color-blue);

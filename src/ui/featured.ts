@@ -18,7 +18,7 @@ export function setupFeaturedSection(): void {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const items = Array.from(document.querySelectorAll<HTMLElement>('.project-item'));
 
-  setupHoverPlayback(items);
+  setupHoverSlide(items);
 
   if (reducedMotion) return;
 
@@ -92,28 +92,35 @@ export function setupFeaturedSection(): void {
 }
 
 /**
- * Plays a project's <video> on hover when a real source is wired in (via a
- * `data-src` attribute), pausing on leave. Without a source it is a no-op and
- * the gradient placeholder stands in.
+ * Hover: the masked name + arrow assembly slides 1em right so the arrow
+ * enters the line mask (the reference mechanism). GSAP owns this transform —
+ * a CSS transition on the same element would fight the scroll-reveal rise.
+ *
+ * NOTE: hover VIDEO playback is intentionally disabled. On the reference the
+ * hover video is the same artwork in motion, so the media never appears to
+ * change; with unrelated placeholder clips it read as an image swap. The
+ * <video data-src> hooks stay in the markup (the project-detail overlay uses
+ * them) — re-enable playback here once per-project matching media exists.
  */
-function setupHoverPlayback(items: HTMLElement[]): void {
-  if (window.matchMedia('(pointer: coarse)').matches) return;
+function setupHoverSlide(items: HTMLElement[]): void {
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   for (const item of items) {
-    const video = item.querySelector<HTMLVideoElement>('.project-item-video');
-    if (!video) continue;
+    const inner = item.querySelector<HTMLElement>('.project-item-line-2-inner');
+    if (!inner) continue;
 
-    item.addEventListener('pointerenter', () => {
-      const src = video.dataset.src;
-      if (src && !video.src) video.src = src;
-      if (!video.src) return;
-      void video.play().then(() => video.classList.add('is-playing')).catch(() => {});
-    });
+    const slide = (x: string): void => {
+      if (reducedMotion) {
+        gsap.set(inner, { x });
+        return;
+      }
+      gsap.to(inner, { x, duration: 0.45, ease: 'power4.out', overwrite: 'auto' });
+    };
 
-    item.addEventListener('pointerleave', () => {
-      if (!video.src) return;
-      video.classList.remove('is-playing');
-      video.pause();
-    });
+    item.addEventListener('pointerenter', () => slide('1em'));
+    item.addEventListener('pointerleave', () => slide('0em'));
+    // keyboard parity with the old :focus-visible CSS rule
+    item.addEventListener('focusin', () => slide('1em'));
+    item.addEventListener('focusout', () => slide('0em'));
   }
 }
