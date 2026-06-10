@@ -45,6 +45,14 @@ export function setupEndSection(): void {
     );
   }
 
-  // The decorative strokes are a hover flourish (CSS-driven), so they are not
-  // part of the scroll reveal.
+  // decorative strokes draw in once the characters have landed (visible at
+  // rest on the real site)
+  const decos = document.querySelectorAll<HTMLElement>('.end-deco');
+  if (decos.length) {
+    timeline.to(
+      decos,
+      { scaleX: 1, duration: 0.7, ease: 'power4.out', stagger: 0.08 },
+      0.75,
+    );
+  }
 }

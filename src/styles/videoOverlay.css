@@ -1,0 +1,235 @@
+/* Video overlay — the fullscreen showreel player (#video-overlay). Opens from
+ * the showreel watch button, fades in over everything (z-index 99) and hosts
+ * the video, a 12-col control strip (play / progress / mute), a mobile-only
+ * close button, and the big white "Close" cursor that follows the pointer
+ * over the video surface. Metrics match the reference stylesheet; the root
+ * font-size clamp makes every child em value scale exactly like the real
+ * site. */
+#video-overlay {
+  position: fixed;
+  z-index: 99;
+  inset: 0;
+  display: none;
+  opacity: 0;
+  background-color: var(--color-black);
+  color: var(--color-white);
+  font-size: clamp(1rem, 1vw, 1.75rem);
+  user-select: none;
+  outline: none;
+}
+
+#video-overlay-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* --- missing-asset fallback ----------------------------------------------
+ * Shown only when the video file 404s: a slowly drifting brand gradient with
+ * a small uppercase note. Revealed from JS by clearing [hidden].
+ */
+#video-overlay-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    115deg,
+    var(--color-ink) 0%,
+    var(--color-blue) 35%,
+    var(--color-grey-blue) 65%,
+    var(--color-ink) 100%
+  );
+  background-size: 300% 300%;
+  animation: video-overlay-drift 16s ease-in-out infinite alternate;
+}
+
+#video-overlay-fallback[hidden] {
+  display: none;
+}
+
+#video-overlay-fallback-note {
+  font-size: 0.75em;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-white);
+}
+
+@keyframes video-overlay-drift {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+
+/* --- control strip -------------------------------------------------------- */
+#video-overlay__controls {
+  position: absolute;
+  bottom: 5vh;
+  left: 0;
+  width: 100%;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--grid-gap);
+  padding: 0 var(--base-padding-x);
+}
+
+#video-overlay__play-btn,
+#video-overlay__mute-btn {
+  font-size: 1em;
+  font-weight: 400;
+  text-transform: uppercase;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--color-white);
+  white-space: pre;
+  cursor: pointer;
+}
+
+#video-overlay__play-btn {
+  grid-column: 1 / span 2;
+  text-align: end;
+}
+
+#video-overlay__mute-btn {
+  grid-column: 11 / span 2;
+  text-align: start;
+}
+
+#video-overlay__progress-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  grid-column: 3 / span 8;
+  cursor: pointer;
+  touch-action: none; /* pointer-drag seeking */
+}
+
+#video-overlay__progress-bg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 0.375em;
+  border-radius: 0.1875em;
+  background-color: #fff3;
+}
+
+#video-overlay__progress-active {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  width: 0%;
+  height: 0.375em;
+  border-radius: 0.1875em;
+  background-color: var(--color-white);
+}
+
+/* when the asset is missing the transport controls go inert (close still works) */
+#video-overlay.video-overlay--fallback #video-overlay__play-btn,
+#video-overlay.video-overlay--fallback #video-overlay__mute-btn,
+#video-overlay.video-overlay--fallback #video-overlay__progress-container {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* --- mobile close button -------------------------------------------------- */
+#video-overlay__mobile-close-btn {
+  position: absolute;
+  top: var(--base-padding-y);
+  right: var(--base-padding-x);
+  z-index: 3;
+  width: 2.8em;
+  height: 2.8em;
+  border-radius: 100%;
+  background: var(--color-grey-blue);
+  justify-content: center;
+  align-items: center;
+  display: none;
+  color: var(--color-white);
+  cursor: pointer;
+}
+
+#video-overlay__mobile-close-btn svg {
+  width: 35%;
+  height: auto;
+}
+
+/* --- big "Close" cursor ----------------------------------------------------
+ * White circle that lerp-follows the pointer over the video surface (driven
+ * from JS via transform); scales away over the controls. Pointer-events off
+ * so clicks land on the video surface underneath and close the overlay.
+ */
+#video-overlay-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  width: 6.25em;
+  height: 6.25em;
+  border-radius: 100%;
+  background: var(--color-white);
+  transform: scale(0);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  will-change: transform;
+}
+
+#video-overlay-cursor span {
+  font-size: 1em;
+  font-weight: 400;
+  text-transform: uppercase;
+  color: var(--color-black);
+}
+
+/* --- responsive ------------------------------------------------------------ */
+@media (max-width: 768px) {
+  #video-overlay__controls {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  #video-overlay__play-btn {
+    grid-column: 1 / span 1;
+  }
+
+  #video-overlay__progress-container {
+    grid-column: 2 / span 4;
+  }
+
+  #video-overlay__mute-btn {
+    grid-column: 6 / span 1;
+  }
+
+  #video-overlay__mobile-close-btn {
+    display: flex;
+  }
+}
+
+/* no hover device -> no magnetic cursor */
+@media (hover: none) {
+  #video-overlay-cursor {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #video-overlay-cursor {
+    display: none;
+  }
+
+  #video-overlay-fallback {
+    animation: none;
+  }
+}

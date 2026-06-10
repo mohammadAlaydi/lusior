@@ -1,0 +1,152 @@
+import gsap from 'gsap';
+import { ScrollTrigger } from './scroll';
+
+/**
+ * Tunnel zone choreography — the scroll-driven "scrolling video" stretch
+ * inside #goal. One scrubbed ScrollTrigger spans the 400vh zone and, per
+ * frame, (a) broadcasts progress to registered listeners (the WebGL gem
+ * tunnel scene), (b) drives the big white title with quickSetters (no new
+ * tweens per frame), and (c) toggles the html.is-black-bg page state.
+ *
+ * Everything is computed purely from progress, so scrubbing backwards is
+ * always correct and idempotent.
+ */
+
+export interface TunnelZone {
+  onProgress(cb: (p: number) => void): void;
+}
+
+type ProgressCallback = (p: number) => void;
+type NumberSetter = (value: number) => void;
+
+/* page state — dark while inside the zone, light again near the exit so the
+ * following End section lands back on off-white */
+const BLACK_BG_ENTER = 0.03;
+const BLACK_BG_EXIT = 0.99;
+
+/* per-line masked rise: line i runs [0.08 + i * 0.05, 0.22 + i * 0.05] */
+const LINE_RISE_START = 0.08;
+const LINE_RISE_DURATION = 0.14;
+const LINE_RISE_STAGGER = 0.05;
+const LINE_HIDDEN_Y_PERCENT = 120;
+
+/* hold drift (subtle depth parallax), then fly past the camera and vanish */
+const DRIFT_START = 0.32;
+const DRIFT_EXTRA_SCALE = 0.06;
+const FLY_START = 0.55;
+const FLY_END = 0.75;
+const FLY_MAX_SCALE = 2.4;
+
+export function setupTunnelZone(): TunnelZone {
+  const callbacks: ProgressCallback[] = [];
+  const zone: TunnelZone = {
+    onProgress(cb: ProgressCallback): void {
+      callbacks.push(cb);
+    },
+  };
+
+  const tunnel = document.getElementById('tunnel');
+  if (!tunnel) return zone; // no markup — inert stub, callbacks never fire
+
+  // Query inside the zone: an older static placeholder with the same id may
+  // still exist elsewhere in #goal.
+  const title = tunnel.querySelector<HTMLElement>('#goal-tunnel-title');
+  const lines = Array.from(
+    tunnel.querySelectorAll<HTMLElement>('.goal-tunnel-title-line'),
+  );
+
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reducedMotion) {
+    // Static fallback: title fully visible, no ScrollTrigger, no class
+    // toggling — tunnel.css gives #tunnel-inner its own dark backdrop.
+    // (Lenis is also off here, so nothing may depend on smooth scroll.)
+    const staticTargets: HTMLElement[] = [
+      ...(title ? [title] : []),
+      ...lines.flatMap((line) => spansOf(line)),
+    ];
+    if (staticTargets.length) {
+      gsap.set(staticTargets, { clearProps: 'all' });
+    }
+    return zone;
+  }
+
+  const setLineY: NumberSetter[] = lines.map((line) =>
+    quickSetterFor(spansOf(line), 'yPercent'),
+  );
+  const setTitleScale = title ? quickSetterFor(title, 'scale') : noopSetter;
+  const setTitleOpacity = title ? quickSetterFor(title, 'opacity') : noopSetter;
+  let isTitleHidden = false;
+
+  const applyTitleState = (p: number): void => {
+    // masked rise — each line translates from 120 to 0 across its window
+    setLineY.forEach((setY, index) => {
+      const start = LINE_RISE_START + index * LINE_RISE_STAGGER;
+      const rise = segmentProgress(p, start, start + LINE_RISE_DURATION);
+      setY(LINE_HIDDEN_Y_PERCENT * (1 - rise));
+    });
+
+    // hold with a subtle scale drift, then fly past the camera and fade
+    const drift = 1 + DRIFT_EXTRA_SCALE * segmentProgress(p, DRIFT_START, FLY_START);
+    const fly = segmentProgress(p, FLY_START, FLY_END);
+    setTitleScale(drift + (FLY_MAX_SCALE - drift) * fly);
+    setTitleOpacity(1 - fly);
+
+    // fully hidden past the fly-out so the faded title never paints
+    const shouldHide = p >= FLY_END;
+    if (title && shouldHide !== isTitleHidden) {
+      isTitleHidden = shouldHide;
+      title.style.visibility = shouldHide ? 'hidden' : '';
+    }
+  };
+
+  // Seed the resting state (lines masked below) before the first scroll tick.
+  applyTitleState(0);
+
+  ScrollTrigger.create({
+    trigger: tunnel,
+    start: 'top top',
+    end: 'bottom bottom',
+    scrub: true,
+    invalidateOnRefresh: true,
+    onUpdate: (self: ScrollTrigger): void => {
+      const p = self.progress;
+      // add > ENTER, remove <= ENTER and >= EXIT; pure function of p, so
+      // scrubbing back through the zone re-applies it correctly
+      setBlackBg(p > BLACK_BG_ENTER && p < BLACK_BG_EXIT);
+      applyTitleState(p);
+      for (const cb of callbacks) cb(p);
+    },
+    // belt & braces: never leave the page black outside the zone
+    onLeave: (): void => setBlackBg(false),
+    onLeaveBack: (): void => setBlackBg(false),
+  });
+
+  return zone;
+}
+
+/** Direct spans of a title line (the animated, masked words). */
+function spansOf(line: HTMLElement): HTMLElement[] {
+  return Array.from(line.querySelectorAll<HTMLElement>('span'));
+}
+
+/** Typed wrapper around gsap.quickSetter for per-frame numeric writes. */
+function quickSetterFor(targets: gsap.TweenTarget, property: string): NumberSetter {
+  const setter = gsap.quickSetter(targets, property);
+  return (value: number): void => {
+    setter(value);
+  };
+}
+
+const noopSetter: NumberSetter = (): void => {
+  /* no title element — nothing to drive */
+};
+
+/** Linear 0→1 progress of p across [start, end], clamped. */
+function segmentProgress(p: number, start: number, end: number): number {
+  if (end <= start) return p >= end ? 1 : 0;
+  return Math.min(1, Math.max(0, (p - start) / (end - start)));
+}
+
+function setBlackBg(active: boolean): void {
+  document.documentElement.classList.toggle('is-black-bg', active);
+}

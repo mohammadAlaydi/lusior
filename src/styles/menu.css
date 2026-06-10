@@ -1,0 +1,499 @@
+/* Header menu — the dropdown card stack that opens under the header's right
+ * side when the Menu pill is clicked. Four cards (nav links, newsletter,
+ * mobile talk shortcut, labs) rise and untilt into place with per-card
+ * stagger delays; closing reverses the stagger. Everything is CSS-transition
+ * driven and sized in em from --header-size so it scales with the header.
+ * Open/close stagger lives in the --open-delay / --close-delay custom
+ * properties defined per card below. */
+#header-menu {
+  position: fixed;
+  top: calc(var(--base-padding-y) + var(--header-size) * 3.1 + 0.5em);
+  right: var(--base-padding-x);
+  z-index: 49; /* just below the fixed header's 50 */
+  width: 19.38em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625em;
+  font-size: var(--header-size);
+  color: var(--color-black);
+  pointer-events: none;
+  /* keep hidden cards out of the tab order; delay covers the close stagger */
+  visibility: hidden;
+  transition: visibility 0s linear 0.7s;
+}
+
+#header-menu.--opened {
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+/* nothing inside is interactive while the menu is closed */
+#header-menu input,
+#header-menu textarea,
+#header-menu a,
+#header-menu button {
+  pointer-events: none;
+}
+
+#header-menu.--opened input,
+#header-menu.--opened textarea,
+#header-menu.--opened a,
+#header-menu.--opened button {
+  pointer-events: auto;
+}
+
+/* --- card open/close choreography ---------------------------------------- */
+#header-menu-links {
+  --open-delay: 0s;
+  --close-delay: 0.14s;
+}
+
+#header-menu-newsletter,
+#header-menu-talk {
+  --open-delay: 0.07s;
+  --close-delay: 0.07s;
+}
+
+#header-menu-labs {
+  --open-delay: 0.14s;
+  --close-delay: 0s;
+}
+
+#header-menu-links {
+  transform: translate3d(0, 5.5em, 0) rotate(3.5deg);
+  opacity: 0;
+  transition:
+    transform 0.5s var(--close-delay) cubic-bezier(0.4, 0, 0.1, 1),
+    opacity 0.5s var(--close-delay) cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#header-menu-talk,
+#header-menu-newsletter,
+#header-menu-labs {
+  transform: translate3d(0, 7.75em, 0) rotate(-3.5deg);
+  opacity: 0;
+  transition:
+    transform 0.5s var(--close-delay) cubic-bezier(0.4, 0, 0.1, 1),
+    opacity 0.5s var(--close-delay) cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#header-menu.--opened #header-menu-links,
+#header-menu.--opened #header-menu-newsletter,
+#header-menu.--opened #header-menu-talk,
+#header-menu.--opened #header-menu-labs {
+  transform: translateZ(0);
+  opacity: 1;
+  transition:
+    transform 0.5s var(--open-delay) cubic-bezier(0.4, 0, 0.1, 1),
+    opacity 0.5s var(--open-delay) cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+/* --- links card ----------------------------------------------------------- */
+#header-menu-links {
+  display: flex;
+  flex-direction: column;
+  text-transform: uppercase;
+  background: var(--color-white);
+  border-radius: 0.625em;
+  padding: 1em 0.3125em;
+}
+
+.header-menu-link {
+  display: inline-block;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  padding: 1em 1.625em;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-black);
+}
+
+/* current-page dot */
+.header-menu-link::before {
+  content: '';
+  position: absolute;
+  top: calc(50% - 0.25em);
+  right: 2em;
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 100%;
+  background: var(--color-black);
+  transform: scale(0);
+  transition: 0.3s transform cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+.header-menu-link.--active::before {
+  transform: scale(1);
+}
+
+/* the active link is not clickable even while the menu is open */
+#header-menu.--opened .header-menu-link.--active {
+  pointer-events: none;
+}
+
+.header-menu-link-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  background: var(--color-header, #0016ec);
+  border-radius: 6.25em;
+  transform: scale(0.85);
+  transition:
+    0.3s opacity,
+    0.4s transform cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+.header-menu-link-inner {
+  display: inline-block;
+  position: relative;
+  overflow: hidden;
+}
+
+.header-menu-link-text {
+  display: inline-block;
+  position: relative;
+  z-index: 1;
+  font-size: 1.625em;
+  text-transform: uppercase;
+  transition:
+    0.4s color,
+    0.4s transform cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+.header-menu-link-text-clone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  font-size: 1.625em;
+  text-transform: uppercase;
+  transform: translate3d(0, 100%, 0);
+  transition:
+    0.4s color,
+    0.4s transform cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+.header-menu-link-svg {
+  position: absolute;
+  top: calc(50% - 0.75em);
+  right: 1.625em;
+  width: 1.5em;
+  height: 1.5em;
+  transform: scale(0);
+  transition:
+    0.4s color,
+    0.2s transform cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+.header-menu-link-svg svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* hover: text swap, background flood, arrow pop, dot retreat */
+.header-menu-link:hover .header-menu-link-text,
+.header-menu-link:focus-visible .header-menu-link-text {
+  transform: translate3d(0, -100%, 0);
+}
+
+.header-menu-link:hover .header-menu-link-text-clone,
+.header-menu-link:focus-visible .header-menu-link-text-clone {
+  transform: translateZ(0);
+}
+
+.header-menu-link:hover .header-menu-link-background,
+.header-menu-link:focus-visible .header-menu-link-background {
+  transform: scale(1);
+  opacity: 0.1;
+}
+
+.header-menu-link:hover .header-menu-link-svg,
+.header-menu-link:focus-visible .header-menu-link-svg {
+  transform: scale(1);
+  transition:
+    0.4s color,
+    0.2s 0.2s transform cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+.header-menu-link.--active:hover::before {
+  transform: scale(0);
+}
+
+/* --- newsletter card ------------------------------------------------------ */
+#header-menu-newsletter {
+  background: var(--color-white);
+  padding: 1.875em;
+  border-radius: 0.625em;
+}
+
+#header-menu-newsletter-title {
+  margin: auto 0;
+  font-size: 2.375em;
+}
+
+#header-menu-newsletter-input {
+  position: relative;
+  font-size: 1.25em;
+  margin-top: 1.4em;
+  height: fit-content;
+}
+
+#header-menu-newsletter-input-field {
+  position: relative;
+  width: 100%;
+  height: 3.5em;
+  border: 0;
+  background-color: var(--color-off-white);
+  border-radius: 1.125rem;
+  outline: none;
+  padding: 1.25em;
+  font-size: 1em;
+  font-family: inherit;
+  color: inherit;
+}
+
+#header-menu-newsletter-input-field::placeholder {
+  color: inherit;
+  opacity: 0.3;
+}
+
+/* accessible focus ring without reintroducing the default outline */
+#header-menu-newsletter-input-field:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--color-blue);
+}
+
+#header-menu-newsletter-input-arrow {
+  position: absolute;
+  display: inline-block;
+  top: 1em;
+  right: 1.5em;
+  width: 1.5em;
+  height: 1.5em;
+  padding: 0;
+}
+
+#header-menu-newsletter-input-arrow svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* inline submit feedback (original addition, not on the reference site) */
+#header-menu-newsletter-msg {
+  margin: 0.625em 0 0;
+  min-height: 1.2em;
+  font-size: 0.8em;
+  line-height: 1.2;
+}
+
+#header-menu-newsletter-msg[data-state='error'] {
+  color: var(--color-error, #d23c2a);
+}
+
+#header-menu-newsletter-msg[data-state='success'] {
+  color: var(--color-header, #0016ec);
+}
+
+/* --- talk card (mobile only) ---------------------------------------------- */
+#header-menu-talk {
+  position: relative;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--color-white);
+  color: var(--color-black);
+  padding: 1.875em;
+  border-radius: 0.625em;
+}
+
+#header-menu-text {
+  font-size: 1.625em;
+  text-transform: uppercase;
+}
+
+#header-menu-talk-icon {
+  width: 1.5em;
+  height: 1.5em;
+}
+
+#header-menu-talk-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.header-menu-talk-link {
+  position: absolute;
+  inset: 0;
+}
+
+/* --- labs card ------------------------------------------------------------ */
+#header-menu-labs {
+  display: block;
+  cursor: pointer;
+  padding: 1.25em 1.875em;
+  background: var(--color-black);
+  border-radius: 0.625em;
+}
+
+#header-menu-labs-inner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1.5em;
+  overflow: hidden;
+}
+
+#header-menu-labs-lucy {
+  flex-shrink: 0;
+  width: 2.375em;
+  height: 2.375em;
+  color: var(--color-green, #c1ff00);
+}
+
+#header-menu-labs-lucy svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#header-menu-labs-texts {
+  position: relative;
+  width: 100%;
+  overflow: hidden; /* masks the vertical text swap */
+  line-height: 1;
+  color: var(--color-white);
+  font-size: 1.625em;
+  text-transform: uppercase;
+}
+
+#header-menu-labs-text {
+  display: inline-block;
+  transition: 0.4s transform cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#header-menu-labs-text-clone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-block;
+  transform: translate3d(0, 100%, 0);
+  transition: 0.4s transform cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#header-menu-labs-arrow {
+  flex-shrink: 0;
+  width: 1.5em;
+  height: 1.5em;
+  color: var(--color-white);
+  transition: 0.3s transform cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#header-menu-labs-arrow2 {
+  position: absolute;
+  top: calc(50% - 0.75em);
+  right: 0;
+  width: 1.5em;
+  height: 1.5em;
+  color: var(--color-white);
+  transform: translate3d(-1.5em, 2.375em, 0);
+  transition: 0.3s transform cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#header-menu-labs-arrow svg,
+#header-menu-labs-arrow2 svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* hover: text swap up, diagonal arrow swap (out top-right, in from
+ * bottom-left), both clipped by the inner's overflow */
+#header-menu-labs:hover #header-menu-labs-text,
+#header-menu-labs:focus-visible #header-menu-labs-text {
+  transform: translate3d(0, -100%, 0);
+}
+
+#header-menu-labs:hover #header-menu-labs-text-clone,
+#header-menu-labs:focus-visible #header-menu-labs-text-clone {
+  transform: translateZ(0);
+}
+
+#header-menu-labs:hover #header-menu-labs-arrow,
+#header-menu-labs:focus-visible #header-menu-labs-arrow {
+  transform: translate3d(1.5em, -2.375em, 0);
+}
+
+#header-menu-labs:hover #header-menu-labs-arrow2,
+#header-menu-labs:focus-visible #header-menu-labs-arrow2 {
+  transform: translateZ(0);
+}
+
+/* --- keyboard focus -------------------------------------------------------- */
+.header-menu-link:focus-visible,
+#header-menu-newsletter-input-arrow:focus-visible,
+.header-menu-talk-link:focus-visible,
+#header-menu-labs:focus-visible {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 2px;
+}
+
+/* --- responsive ------------------------------------------------------------ */
+@media (max-width: 768px) {
+  #header-menu {
+    top: calc(var(--base-padding-y) * 2 + 3 * var(--header-size));
+    width: calc(100% - var(--base-padding-x) * 2);
+  }
+
+  #header-menu-newsletter {
+    display: none;
+  }
+
+  #header-menu-talk {
+    display: flex;
+  }
+}
+
+/* --- reduced motion: no slides or tilts, the panel simply fades ------------ */
+@media (prefers-reduced-motion: reduce) {
+  #header-menu {
+    transition: visibility 0s linear 0.2s;
+  }
+
+  #header-menu.--opened {
+    transition-delay: 0s;
+  }
+
+  #header-menu-links,
+  #header-menu-newsletter,
+  #header-menu-talk,
+  #header-menu-labs {
+    transform: none;
+    transition: opacity 0.2s linear;
+  }
+
+  #header-menu.--opened #header-menu-links,
+  #header-menu.--opened #header-menu-newsletter,
+  #header-menu.--opened #header-menu-talk,
+  #header-menu.--opened #header-menu-labs {
+    transform: none;
+    transition: opacity 0.2s linear;
+  }
+
+  .header-menu-link::before,
+  .header-menu-link-background,
+  .header-menu-link-text,
+  .header-menu-link-text-clone,
+  .header-menu-link-svg,
+  #header-menu-labs-text,
+  #header-menu-labs-text-clone,
+  #header-menu-labs-arrow,
+  #header-menu-labs-arrow2 {
+    transition: none;
+  }
+}

@@ -112,6 +112,8 @@
 }
 
 .end-title-line {
+  /* block so the two title lines stack like the reference ("Let's work" / "together!") */
+  display: block;
   position: relative;
   height: var(--font-size);
 }
@@ -133,14 +135,14 @@
   will-change: transform;
 }
 
-/* decorative strokes that draw in only while the title link is hovered */
+/* decorative strokes — drawn in by the scroll reveal (visible at rest on the
+ * real site per a user-supplied desktop screenshot); gsap owns the transform */
 .end-deco {
   position: absolute;
   height: 0.07em;
   background: var(--color-black);
   transform-origin: left;
   transform: scaleX(0);
-  transition: transform 0.5s cubic-bezier(0.35, 0, 0, 1);
 }
 
 #end-deco-top {
@@ -159,15 +161,6 @@
   bottom: 0.12em;
   left: 1.78em;
   width: 2.45em;
-}
-
-#end-title:hover .end-deco,
-#end-title:focus-visible .end-deco {
-  transform: scaleX(1);
-}
-
-#end-deco-br {
-  transition-delay: 0.06s;
 }
 
 #end-title:focus-visible {
@@ -258,5 +251,10 @@
 @media (prefers-reduced-motion: reduce) {
   .end-bottom-arrow {
     animation: none;
+  }
+
+  /* the scroll reveal never runs, so show the strokes statically */
+  .end-deco {
+    transform: scaleX(1);
   }
 }

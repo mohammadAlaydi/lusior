@@ -1,0 +1,410 @@
+/* Footer — contact details, social links, newsletter signup and the bottom
+ * bar with a back-to-top button. A full-bleed white sheet (#footer-bg) slides
+ * under the content so the footer reads as its own surface on the off-white
+ * page. The section root font-size matches the reference clamp so every em
+ * measurement below scales exactly like the real site. */
+#footer {
+  display: flex; /* overrides the .section grid; base padding still applies */
+  flex-direction: column;
+  min-height: calc(var(--vh, 1vh) * 100);
+  color: var(--color-black);
+  font-size: clamp(0.875rem, 1vw, 2rem);
+}
+
+/* full-bleed white sheet behind the content (2px overdraw hides any seam) */
+#footer-bg {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  width: 100vw;
+  height: calc(100% + 2px);
+  margin-left: -50vw;
+  background-color: var(--color-white);
+}
+
+/* flexible spacer pushing the content toward the bottom of the viewport */
+#footer-top {
+  position: relative;
+  z-index: 1;
+  flex-grow: 1;
+  margin-top: calc(var(--vh) * 5);
+}
+
+/* --- middle: contact + newsletter ---------------------------------------- */
+#footer-middle {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--grid-gap);
+}
+
+#footer-middle-contact {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  column-gap: var(--grid-gap);
+  grid-column: 1 / span 6;
+  font-size: 1.25em;
+}
+
+#footer-contact-address {
+  grid-column: 1 / span 3;
+  line-height: 1.4;
+  width: fit-content;
+  font-style: normal; /* <address> default italics */
+  will-change: transform;
+}
+
+.footer-address-line-wrapper {
+  width: fit-content;
+  transition: 0.6s transform cubic-bezier(0.35, 0, 0, 1);
+}
+
+/* staircase shift — per-line --delta-x is set from JS (index * 0.4em) */
+#footer-contact-address:hover .footer-address-line-wrapper {
+  transform: translate3d(var(--delta-x), 0, 0);
+}
+
+#footer-contact-socials {
+  grid-column: 4 / span 3;
+  will-change: transform;
+}
+
+#footer-contact-socials a {
+  display: block;
+}
+
+.footer-socials-wrapper {
+  position: relative;
+  overflow: hidden;
+}
+
+.footer-socials-line-wrapper {
+  position: relative;
+  display: block;
+  transition: 0.3s transform;
+}
+
+.footer-socials-line-wrapper:not(:first-child) {
+  margin-top: 0.3em;
+}
+
+/* up-arrow rotated to point right; parked 2em outside the clipped wrapper */
+.footer-socials-line-svg {
+  position: absolute !important;
+  top: 0;
+  left: -2em;
+  width: 1.25em;
+  height: 1.25em;
+  transition: 0.4s transform cubic-bezier(0.35, 0, 0, 1);
+  transform: rotate(90deg);
+}
+
+.footer-socials-text {
+  margin: 0;
+  transition: 0.4s transform cubic-bezier(0.35, 0, 0, 1);
+}
+
+.footer-socials-line-wrapper:hover .footer-socials-text,
+.footer-socials-line-wrapper:focus-visible .footer-socials-text {
+  transform: translate3d(2em, 0, 0);
+}
+
+.footer-socials-line-wrapper:hover .footer-socials-line-svg,
+.footer-socials-line-wrapper:focus-visible .footer-socials-line-svg {
+  transform: translate3d(2em, 0, 0) rotate(90deg);
+}
+
+#footer-contact-enquires {
+  margin-top: 2.5em;
+  grid-column: 1 / span 3;
+  will-change: transform;
+}
+
+#footer-contact-business {
+  margin-top: 2.5em;
+  grid-column: 4 / span 3;
+  will-change: transform;
+}
+
+.footer-contact-label {
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+}
+
+.footer-business-link-wrapper,
+.footer-enquires-link-wrapper {
+  height: 2em;
+  margin-top: 0.3em;
+}
+
+#footer-business-link,
+#footer-enquires-link {
+  position: relative;
+  display: block;
+  width: fit-content;
+  overflow: hidden;
+  padding-bottom: 0.2em;
+}
+
+/* underline wipe, left to right on hover */
+#footer-business-link::before,
+#footer-enquires-link::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 0.1em;
+  background: var(--color-black);
+  transition: 0.3s transform cubic-bezier(0.35, 0, 0, 1);
+  transform-origin: left;
+  transform: scale3d(0, 1, 1);
+}
+
+#footer-business-link:hover::before,
+#footer-business-link:focus-visible::before,
+#footer-enquires-link:hover::before,
+#footer-enquires-link:focus-visible::before {
+  transform: scaleZ(1);
+}
+
+/* --- newsletter ----------------------------------------------------------- */
+#footer-middle-newsletter {
+  grid-column: 7 / span 6;
+}
+
+#footer-newsletter-header {
+  margin: 0;
+  font-size: 3.375em;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+/* masks injected from JS around each line for the rise reveal */
+.footer-newsletter-line-mask {
+  display: block;
+  overflow: hidden;
+}
+
+.footer-newsletter-line {
+  display: block;
+  will-change: transform;
+}
+
+#footer-newsletter-input {
+  margin-top: 2em;
+  position: relative;
+  height: 4.375em;
+  max-width: 33.75em;
+}
+
+/* pill background — scaleX(0) -> 1 reveal on scroll-into-view (JS) */
+#footer-newsletter-bg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: var(--color-off-white);
+  border-radius: 1.125em;
+  transform-origin: left;
+}
+
+#footer-newsletter-form {
+  height: 100%;
+}
+
+#footer-newsletter-input-field {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: none;
+  padding: 0.625em 1.25em;
+  font-size: 1.25em;
+  font-family: inherit;
+  color: var(--color-black);
+  background: transparent;
+}
+
+#footer-newsletter-input-field::placeholder {
+  opacity: 0;
+  font-size: 1em;
+  color: inherit;
+  transition: opacity 0.5s 0.3s;
+}
+
+#footer-newsletter-input.--active #footer-newsletter-input-field::placeholder {
+  opacity: 0.3;
+}
+
+#footer-newsletter-input-arrow {
+  position: absolute;
+  display: inline-block;
+  top: calc(50% - 0.75em);
+  right: 1.25em;
+  width: 1.5em;
+  height: 1.5em;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+
+#footer-newsletter-input-arrow svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#footer-newsletter-feedback-message {
+  margin: 0.5em 1em 0;
+}
+
+#footer-newsletter-feedback-message.error {
+  color: red;
+}
+
+/* --- bottom bar ----------------------------------------------------------- */
+#footer-bottom {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--grid-gap);
+  align-items: center;
+  font-size: 1em;
+  margin-top: calc(var(--vh) * 7);
+}
+
+#footer-bottom-copyright {
+  position: relative;
+  overflow: hidden;
+  grid-column: 1 / span 6;
+}
+
+#footer-bottom-labs {
+  position: relative;
+  overflow: hidden;
+  grid-column: 7 / span 3;
+  padding-bottom: 0.1em;
+  width: fit-content;
+}
+
+#footer-bottom-labs::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 0.125em;
+  background: var(--color-black);
+  transition: 0.6s transform cubic-bezier(0.35, 0, 0, 1);
+  transform-origin: left;
+  transform: scale3d(0, 1, 1);
+}
+
+#footer-bottom-labs:hover::before,
+#footer-bottom-labs:focus-visible::before {
+  transform: scaleZ(1);
+}
+
+#footer-bottom-tagline {
+  position: relative;
+  overflow: hidden;
+  grid-column: 10 / span 2;
+}
+
+/* inner spans animated yPercent 110 -> 0 inside the clipped rows (JS) */
+.footer-bottom-reveal {
+  display: block;
+  will-change: transform;
+}
+
+#footer-bottom-up {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 3.75em;
+  height: 3.75em;
+  background: var(--color-black);
+  color: var(--color-white);
+  border-radius: 100%;
+  cursor: pointer;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+#footer-bottom-up svg {
+  width: 1.5em;
+  height: 1.5em;
+  transition: 0.4s transform cubic-bezier(0.35, 0, 0, 1);
+}
+
+/* clone parked below; on hover the pair slides up like a conveyor */
+#footer-bottom-up svg:last-child {
+  position: absolute;
+  transform: translate3d(0, 3em, 0);
+}
+
+#footer-bottom-up:hover svg:first-child,
+#footer-bottom-up:focus-visible svg:first-child {
+  transform: translate3d(0, -3em, 0);
+}
+
+#footer-bottom-up:hover svg:last-child,
+#footer-bottom-up:focus-visible svg:last-child {
+  transform: translate3d(0, 0, 0);
+}
+
+/* --- responsive ----------------------------------------------------------- */
+@media (max-width: 768px) {
+  #footer {
+    font-size: clamp(0.75rem, 1vw, 2rem);
+  }
+
+  #footer-middle {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    row-gap: 5em;
+  }
+
+  #footer-middle-contact {
+    grid-row: 2;
+  }
+
+  #footer-middle-newsletter {
+    grid-column: 1 / span 6;
+  }
+
+  #footer-bottom {
+    row-gap: 2em;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  #footer-bottom-copyright {
+    grid-row: 3;
+  }
+
+  #footer-bottom-labs {
+    grid-column: 1 / span 6;
+  }
+
+  #footer-bottom-tagline {
+    grid-column: 1 / span 6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .footer-address-line-wrapper,
+  .footer-socials-line-wrapper,
+  .footer-socials-line-svg,
+  .footer-socials-text,
+  #footer-business-link::before,
+  #footer-enquires-link::before,
+  #footer-bottom-labs::before,
+  #footer-bottom-up svg,
+  #footer-newsletter-input-field::placeholder {
+    transition: none;
+  }
+}

@@ -1,0 +1,155 @@
+/* Scroll-nav — the dark "next page" strip at the very bottom of the page,
+ * after the footer. A row of crosses, a "Next up" kicker, a big uppercase
+ * page title and, on the right, a green progress bar that fills as the strip
+ * rises into view (full exactly at page bottom). On the real site reaching
+ * full navigates to the next page; this recreation is single-page, so the
+ * full bar is simply the end state. Root font-size is the reference clamp so
+ * every child em value scales exactly like the real site. */
+#scroll-nav {
+  display: block; /* override the .section grid; this strip is flow layout */
+  position: relative;
+  background-color: #121416;
+  color: var(--color-white);
+  font-size: clamp(0.875rem, 1vw, 2rem);
+}
+
+#scroll-nav-content {
+  text-transform: uppercase;
+}
+
+/* --- cross line ----------------------------------------------------------
+ * Five small plus marks spread across the top of the strip. Each is a 1em
+ * box whose ::before is the vertical 2px stroke and ::after the same stroke
+ * rotated to horizontal, centred so they read as a +. */
+#scroll-nav-cross-line {
+  position: relative;
+  width: calc(100% - 1em);
+  margin-left: 0.5em;
+  height: 1em;
+}
+
+.scroll-nav-cross {
+  position: absolute;
+  width: 1em;
+  height: 1em;
+}
+
+.scroll-nav-cross::before,
+.scroll-nav-cross::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - 1px);
+  top: calc(50% - 0.5em);
+  width: 2px;
+  height: 1em;
+  background: var(--color-white);
+}
+
+.scroll-nav-cross::after {
+  transform: rotate(90deg);
+}
+
+.scroll-nav-cross:nth-child(1) {
+  left: 0;
+}
+.scroll-nav-cross:nth-child(2) {
+  left: 25%;
+}
+.scroll-nav-cross:nth-child(3) {
+  left: 50%;
+}
+.scroll-nav-cross:nth-child(4) {
+  left: 75%;
+}
+.scroll-nav-cross:nth-child(5) {
+  left: 100%;
+}
+
+/* --- kicker + headline ---------------------------------------------------- */
+#scroll-nav-subtitle {
+  padding-top: 1em;
+}
+
+#scroll-nav-main {
+  position: relative;
+}
+
+#scroll-nav-text {
+  white-space: nowrap;
+  font-size: 3.5em;
+  padding: 1em 0;
+  line-height: 1em;
+}
+
+/* word-level masked reveal (split + animated from JS; visible without JS) */
+#scroll-nav-subtitle .word-mask,
+#scroll-nav-text .word-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+#scroll-nav-subtitle .word,
+#scroll-nav-text .word {
+  display: inline-block;
+  position: relative;
+  will-change: transform;
+}
+
+/* --- next-page progress --------------------------------------------------- */
+#scroll-nav-next {
+  position: absolute;
+  display: flex;
+  right: 0;
+  top: 50%;
+  margin-top: -0.5em;
+  min-width: 200px;
+  width: 20%;
+  line-height: 1em;
+}
+
+#scroll-nav-next-text {
+  white-space: nowrap;
+}
+
+#scroll-nav-next-bar {
+  margin: calc(0.5em - 1px) 0.75em 0 0.75em;
+  flex-grow: 1;
+  height: 4px;
+  background-color: #34393f;
+}
+
+#scroll-nav-next-bar-inner {
+  width: 100%;
+  height: 100%;
+  background-color: var(--color-green, #c1ff00);
+  transform-origin: 0 0;
+  transform: scaleX(0.5); /* resting state; JS scrubs 0 -> 1 with scroll */
+}
+
+#scroll-nav-next-arrow {
+  width: 1.2em;
+  height: 1.2em;
+}
+
+#scroll-nav-next-arrow svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* --- responsive ----------------------------------------------------------- */
+@media (max-width: 768px) {
+  #scroll-nav {
+    font-size: clamp(0.75rem, 1vw, 2rem);
+  }
+
+  #scroll-nav-cross-line {
+    display: none;
+  }
+
+  #scroll-nav-next {
+    position: relative;
+    width: 100%;
+    margin-top: 1em;
+  }
+}

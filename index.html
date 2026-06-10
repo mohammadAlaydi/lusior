@@ -12,6 +12,8 @@
     <link rel="preload" href="/fonts/Aspekta-500.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
+    <div id="preloader" aria-hidden="true"><div id="preloader-percent-digits"></div></div>
+
     <div id="ui">
       <header id="header">
         <a id="logo" href="/" aria-label="Home">LUSION</a>
@@ -43,6 +45,95 @@
           </button>
         </div>
       </header>
+
+      <div id="header-menu" aria-hidden="true">
+        <nav id="header-menu-links" aria-label="Menu">
+          <a class="header-menu-link --active" href="#" aria-current="page">
+            <span class="header-menu-link-background" aria-hidden="true"></span>
+            <span class="header-menu-link-inner">
+              <span class="header-menu-link-text">Home</span>
+              <span class="header-menu-link-text-clone" aria-hidden="true">Home</span>
+            </span>
+            <span class="header-menu-link-svg" aria-hidden="true">
+              <svg viewBox="0 0 16 16" fill="none"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </span>
+          </a>
+          <a class="header-menu-link" href="#">
+            <span class="header-menu-link-background" aria-hidden="true"></span>
+            <span class="header-menu-link-inner">
+              <span class="header-menu-link-text">About us</span>
+              <span class="header-menu-link-text-clone" aria-hidden="true">About us</span>
+            </span>
+            <span class="header-menu-link-svg" aria-hidden="true">
+              <svg viewBox="0 0 16 16" fill="none"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </span>
+          </a>
+          <a class="header-menu-link" href="#">
+            <span class="header-menu-link-background" aria-hidden="true"></span>
+            <span class="header-menu-link-inner">
+              <span class="header-menu-link-text">Projects</span>
+              <span class="header-menu-link-text-clone" aria-hidden="true">Projects</span>
+            </span>
+            <span class="header-menu-link-svg" aria-hidden="true">
+              <svg viewBox="0 0 16 16" fill="none"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </span>
+          </a>
+          <a class="header-menu-link" href="#">
+            <span class="header-menu-link-background" aria-hidden="true"></span>
+            <span class="header-menu-link-inner">
+              <span class="header-menu-link-text">Contact</span>
+              <span class="header-menu-link-text-clone" aria-hidden="true">Contact</span>
+            </span>
+            <span class="header-menu-link-svg" aria-hidden="true">
+              <svg viewBox="0 0 16 16" fill="none"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </span>
+          </a>
+        </nav>
+
+        <div id="header-menu-newsletter">
+          <p id="header-menu-newsletter-title">Stay in the loop</p>
+          <form id="header-menu-newsletter-input" novalidate>
+            <input
+              id="header-menu-newsletter-input-field"
+              type="email"
+              name="email"
+              placeholder="Your email address"
+              autocomplete="email"
+              aria-label="Email address"
+            />
+            <button id="header-menu-newsletter-input-arrow" type="submit" aria-label="Subscribe">
+              <svg viewBox="0 0 16 16" fill="none"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </button>
+            <p id="header-menu-newsletter-msg" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+
+        <div id="header-menu-talk">
+          <span id="header-menu-text">Let’s talk</span>
+          <span id="header-menu-talk-icon" aria-hidden="true">
+            <svg viewBox="0 0 16 16" fill="none"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </span>
+          <a class="header-menu-talk-link" href="mailto:hello@example.com" aria-label="Email us"></a>
+        </div>
+
+        <a id="header-menu-labs" href="#">
+          <span id="header-menu-labs-inner">
+            <span id="header-menu-labs-lucy" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" /><circle cx="9" cy="10" r="1.2" fill="currentColor" /><circle cx="15" cy="10" r="1.2" fill="currentColor" /><path d="M8.5 14.5c1 1.2 2.2 1.8 3.5 1.8s2.5-.6 3.5-1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
+            </span>
+            <span id="header-menu-labs-texts">
+              <span id="header-menu-labs-text">LABS</span>
+              <span id="header-menu-labs-text-clone" aria-hidden="true">LABS</span>
+            </span>
+            <span id="header-menu-labs-arrow" aria-hidden="true">
+              <svg viewBox="0 0 16 16" fill="none"><path d="M3 13 13 3M5 3h8v8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </span>
+            <span id="header-menu-labs-arrow2" aria-hidden="true">
+              <svg viewBox="0 0 16 16" fill="none"><path d="M3 13 13 3M5 3h8v8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </span>
+          </span>
+        </a>
+      </div>
 
       <main>
         <section id="hero" class="section" aria-labelledby="hero-title">
@@ -162,8 +253,8 @@
           <div id="featured-grid">
             <a class="project-item" href="#featured" style="--accent: #2b3afb" aria-label="Aurora Bloom — placeholder project">
               <div class="project-item-main">
-                <div class="project-item-media" aria-hidden="true"></div>
-                <video class="project-item-video" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <div class="project-item-media" style="background-image: url('/featured/p1.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
+                <video class="project-item-video" data-src="/featured/p1.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
                 <span class="project-item-toggle">Website</span>
               </div>
               <div class="project-item-footer">
@@ -183,8 +274,8 @@
 
             <a class="project-item" href="#featured" style="--accent: #8832f7" aria-label="Meridian — placeholder project">
               <div class="project-item-main">
-                <div class="project-item-media" aria-hidden="true"></div>
-                <video class="project-item-video" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <div class="project-item-media" style="background-image: url('/featured/p2.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
+                <video class="project-item-video" data-src="/featured/p2.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
                 <span class="project-item-toggle">Immersive</span>
               </div>
               <div class="project-item-footer">
@@ -204,8 +295,8 @@
 
             <a class="project-item" href="#featured" style="--accent: #ff4c41" aria-label="Continuum — placeholder project">
               <div class="project-item-main">
-                <div class="project-item-media" aria-hidden="true"></div>
-                <video class="project-item-video" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <div class="project-item-media" style="background-image: url('/featured/p3.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
+                <video class="project-item-video" data-src="/featured/p3.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
                 <span class="project-item-toggle">3D / WebGL</span>
               </div>
               <div class="project-item-footer">
@@ -225,8 +316,8 @@
 
             <a class="project-item" href="#featured" style="--accent: #14b8a6" aria-label="Halcyon — placeholder project">
               <div class="project-item-main">
-                <div class="project-item-media" aria-hidden="true"></div>
-                <video class="project-item-video" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <div class="project-item-media" style="background-image: url('/featured/p4.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
+                <video class="project-item-video" data-src="/featured/p4.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
                 <span class="project-item-toggle">Website</span>
               </div>
               <div class="project-item-footer">
@@ -246,8 +337,8 @@
 
             <a class="project-item" href="#featured" style="--accent: #f59e0b" aria-label="Lumen Field — placeholder project">
               <div class="project-item-main">
-                <div class="project-item-media" aria-hidden="true"></div>
-                <video class="project-item-video" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <div class="project-item-media" style="background-image: url('/featured/p5.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
+                <video class="project-item-video" data-src="/featured/p5.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
                 <span class="project-item-toggle">Film / 3D</span>
               </div>
               <div class="project-item-footer">
@@ -267,8 +358,8 @@
 
             <a class="project-item" href="#featured" style="--accent: #3ddc84" aria-label="Northwind — placeholder project">
               <div class="project-item-main">
-                <div class="project-item-media" aria-hidden="true"></div>
-                <video class="project-item-video" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <div class="project-item-media" style="background-image: url('/featured/p6.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
+                <video class="project-item-video" data-src="/featured/p6.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
                 <span class="project-item-toggle">Website</span>
               </div>
               <div class="project-item-footer">
@@ -298,10 +389,59 @@
           </a>
         </section>
 
-        <!-- #goal (philosophy + scroll-driven 3D tunnel scene) will be inserted here -->
+        <section id="goal" class="section" aria-labelledby="goal-title">
+          <div id="goal-context">
+            <div id="goal-context-inner">
+              <h2 id="goal-title">
+                <span class="goal-line-mask"><span class="line">Make every</span></span>
+                <span class="goal-line-mask"><span class="line">pixel feel</span></span>
+                <span class="goal-line-mask"><span class="line">alive</span></span>
+              </h2>
+
+              <div id="goal-texts">
+                <p class="goal-texts-paragraph">
+                  We treat curiosity as a discipline. Every build starts with a question — what if
+                  this surface could breathe? — and only ships once the answer feels effortless.
+                </p>
+                <p class="goal-texts-paragraph">
+                  Craft is the quiet half of the work. We obsess over frame budgets, easing curves
+                  and the half-second of delight nobody can quite explain, because that is where
+                  memory lives.
+                </p>
+              </div>
+
+              <div id="goal-image-in-outer">
+                <div id="goal-image-in-inner">
+                  <div id="goal-image-in" class="goal-image-frame" style="--accent: var(--color-header, #0016ec)" aria-hidden="true"></div>
+                </div>
+              </div>
+
+              <div id="goal-image-out-outer">
+                <div id="goal-image-out-inner">
+                  <div id="goal-image-out" class="goal-image-frame" style="--accent: var(--color-green, #c1ff00)" aria-hidden="true"></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Scroll-driven tunnel zone: page goes black, gem scene + title scrub
+               with scroll (400vh study cut of the reference's 4200vh zone). -->
+          <div id="tunnel" aria-hidden="true">
+            <div id="tunnel-inner">
+              <canvas id="tunnel-canvas"></canvas>
+              <div id="goal-tunnel-title">
+                <div class="goal-tunnel-title-line"><span>Drift</span><span>into</span><span>a</span><span>wider</span><span>world</span></div>
+                <div class="goal-tunnel-title-line"><span>and</span><span>watch</span><span>your</span><span>ideas</span></div>
+                <div class="goal-tunnel-title-line"><span>take</span><span>flight</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <section id="end" aria-labelledby="end-title">
           <div id="end-inner">
+            <canvas id="end-confetti" aria-hidden="true"></canvas>
             <div id="end-crosses" aria-hidden="true">
               <span class="end-cross"></span>
               <span class="end-cross"></span>
@@ -333,6 +473,166 @@
           </div>
         </section>
       </main>
+
+      <footer id="footer" class="section" aria-label="Footer">
+        <div id="footer-bg" aria-hidden="true"></div>
+        <div id="footer-top" aria-hidden="true"></div>
+
+        <div id="footer-middle">
+          <div id="footer-middle-contact">
+            <address id="footer-contact-address">
+              <div class="footer-address-line-wrapper">Studio Northwind</div>
+              <div class="footer-address-line-wrapper">42 Harbor Lane</div>
+              <div class="footer-address-line-wrapper">Rotterdam, NL</div>
+            </address>
+
+            <div id="footer-contact-socials">
+              <div class="footer-socials-wrapper">
+                <a class="footer-socials-line-wrapper" href="#">
+                  <svg class="footer-socials-line-svg" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M8 13.5V2.5M3.5 7 8 2.5 12.5 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <p class="footer-socials-text">Instagram</p>
+                </a>
+                <a class="footer-socials-line-wrapper" href="#">
+                  <svg class="footer-socials-line-svg" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M8 13.5V2.5M3.5 7 8 2.5 12.5 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <p class="footer-socials-text">Twitter / X</p>
+                </a>
+                <a class="footer-socials-line-wrapper" href="#">
+                  <svg class="footer-socials-line-svg" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M8 13.5V2.5M3.5 7 8 2.5 12.5 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <p class="footer-socials-text">LinkedIn</p>
+                </a>
+                <a class="footer-socials-line-wrapper" href="#">
+                  <svg class="footer-socials-line-svg" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M8 13.5V2.5M3.5 7 8 2.5 12.5 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <p class="footer-socials-text">GitHub</p>
+                </a>
+              </div>
+            </div>
+
+            <div id="footer-contact-enquires">
+              <div class="footer-contact-label">New enquiries</div>
+              <div class="footer-enquires-link-wrapper">
+                <a id="footer-enquires-link" href="mailto:hello@example.com">hello@example.com</a>
+              </div>
+            </div>
+
+            <div id="footer-contact-business">
+              <div class="footer-contact-label">Business</div>
+              <div class="footer-business-link-wrapper">
+                <a id="footer-business-link" href="mailto:biz@example.com">biz@example.com</a>
+              </div>
+            </div>
+          </div>
+
+          <div id="footer-middle-newsletter">
+            <h2 id="footer-newsletter-header">
+              <span class="footer-newsletter-line">Fresh ideas,</span>
+              <span class="footer-newsletter-line">straight to you.</span>
+            </h2>
+
+            <div id="footer-newsletter-input">
+              <div id="footer-newsletter-bg" aria-hidden="true"></div>
+              <form id="footer-newsletter-form" novalidate>
+                <input
+                  id="footer-newsletter-input-field"
+                  type="email"
+                  name="email"
+                  placeholder="Your email address"
+                  autocomplete="email"
+                  aria-label="Your email address"
+                />
+                <button id="footer-newsletter-input-arrow" type="submit" aria-label="Subscribe">
+                  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+              </form>
+            </div>
+            <p id="footer-newsletter-feedback-message" role="status" aria-live="polite"></p>
+          </div>
+        </div>
+
+        <div id="footer-bottom">
+          <div id="footer-bottom-copyright">
+            <span class="footer-bottom-reveal">© 2026 Studio Northwind</span>
+          </div>
+          <a id="footer-bottom-labs" href="#">
+            <span class="footer-bottom-reveal">Experiments</span>
+          </a>
+          <div id="footer-bottom-tagline">
+            <span class="footer-bottom-reveal">Made with curiosity</span>
+          </div>
+          <button id="footer-bottom-up" aria-label="Back to top">
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 13.5V2.5M3.5 7 8 2.5 12.5 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 13.5V2.5M3.5 7 8 2.5 12.5 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </div>
+      </footer>
+
+      <section id="scroll-nav" class="section" aria-label="Next page">
+        <div id="scroll-nav-content">
+          <div id="scroll-nav-cross-line" aria-hidden="true">
+            <span class="scroll-nav-cross"></span>
+            <span class="scroll-nav-cross"></span>
+            <span class="scroll-nav-cross"></span>
+            <span class="scroll-nav-cross"></span>
+            <span class="scroll-nav-cross"></span>
+          </div>
+
+          <div id="scroll-nav-subtitle">Next up</div>
+
+          <div id="scroll-nav-main">
+            <div id="scroll-nav-text">About the studio</div>
+
+            <div id="scroll-nav-next" aria-hidden="true">
+              <span id="scroll-nav-next-text">Next</span>
+              <div id="scroll-nav-next-bar">
+                <div id="scroll-nav-next-bar-inner"></div>
+              </div>
+              <span id="scroll-nav-next-arrow">
+                <svg viewBox="0 0 16 16" fill="none">
+                  <path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="video-overlay" role="dialog" aria-label="Showreel video player" aria-hidden="true" tabindex="-1">
+      <video id="video-overlay-video" src="/reel/desktop.mp4" playsinline preload="none"></video>
+
+      <div id="video-overlay-fallback" hidden>
+        <span id="video-overlay-fallback-note">Showreel placeholder — add /public/reel/desktop.mp4</span>
+      </div>
+
+      <div id="video-overlay__controls">
+        <button id="video-overlay__play-btn" type="button">Pause</button>
+        <div id="video-overlay__progress-container" aria-label="Seek">
+          <div id="video-overlay__progress-bg" aria-hidden="true"></div>
+          <div id="video-overlay__progress-active" aria-hidden="true"></div>
+        </div>
+        <button id="video-overlay__mute-btn" type="button">Mute</button>
+      </div>
+
+      <button id="video-overlay__mobile-close-btn" type="button" aria-label="Close video">
+        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M3 3l10 10M13 3 3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+      </button>
+
+      <div id="video-overlay-cursor" aria-hidden="true"><span>Close</span></div>
     </div>
 
     <script type="module" src="/src/main.ts"></script>

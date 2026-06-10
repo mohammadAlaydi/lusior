@@ -177,4 +177,9 @@ export function setupReelVideo(): void {
       /* autoplay blocked: poster gradient stays */
     });
   });
+
+  // markup ships preload="metadata", which stops short of 'canplay' — pull the
+  // stream so the listener actually fires when the file exists
+  video.preload = 'auto';
+  video.load();
 }

@@ -2,14 +2,14 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /** Half-length of one arm, from the jack's center to an arm tip (world units). */
-export const ARM_HALF_LENGTH = 2.1;
+export const ARM_HALF_LENGTH = 2.35;
 /** Radius of an arm's cylindrical body (world units). */
-export const ARM_RADIUS = 0.62;
-/** Fillet radius rounding the flat end caps into the cylinder sides. */
-const CAP_FILLET = 0.22;
+export const ARM_RADIUS = 0.72;
+/** Fillet radius rounding the end caps — generous, for a soft toy-like cap. */
+const CAP_FILLET = 0.32;
 
-const RADIAL_SEGMENTS = 36;
-const FILLET_SEGMENTS = 7;
+const RADIAL_SEGMENTS = 40;
+const FILLET_SEGMENTS = 8;
 
 /**
  * Profile of a cylinder with flat, fillet-rounded end caps (flatter than a

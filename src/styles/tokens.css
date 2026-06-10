@@ -41,6 +41,8 @@
   --color-ink: #0d0e13; /* webgl canvas backdrop */
   --color-blue: #1a2ffb;
   --color-grey-blue: #2b2e3a;
+  --color-green: #c1ff00;
+  --color-header: #0016ec;
 
   /* layout */
   --grid-gap: 4vw;

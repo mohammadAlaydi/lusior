@@ -4,3 +4,7 @@ dist/
 .env.local
 *.local
 .DS_Store
+
+# real lusion.co extracted bundles — measurement reference only, never ship
+reference/
+*.tsbuildinfo

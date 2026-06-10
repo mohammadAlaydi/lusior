@@ -4,9 +4,16 @@
 > Guiding rule: **match the reference exactly. Do not invent effects.** If something
 > isn't on the real site, it doesn't belong here (see "Fidelity corrections" below).
 
-Last worked: 2026-06-10 (session 2). Built: header, hero, showreel, **featured projects**,
-**end/CTA**. End was corrected to match a user-supplied desktop screenshot. Verified
-hero/reel/featured at desktop via the connected Chrome browser.
+Last worked: 2026-06-10 (session 3). Built + browser-verified this session: **preloader**
+(odometer 0→100, slides out, then intro), **header menu panel** (open/close, text-swap
+links, newsletter, labs card), **goal/philosophy content layer** (`#goal` — title/texts/
+two image reveals; tunnel zone stubbed at 150vh, real is 4200vh), **footer** (address
+staircase, socials slide, underline wipes, newsletter reveal+validate, back-to-top),
+**scroll-nav** (dark strip, green progress bar full exactly at page bottom), **video
+overlay** (opens from `#reel-watch`, seek/play/mute, Esc/click close, missing-asset
+fallback). Boot was hardened: always starts at top, ScrollTrigger re-measured post-boot,
+preloader can never strand the black screen. Earlier sessions: header, hero, showreel,
+featured projects, end/CTA.
 
 > **Live-site comparison blocker:** lusion.co takes **6+ minutes and never finished
 > loading** (stuck ~92%) inside the automated browser (Claude-in-Chrome / Playwright) — it
@@ -111,17 +118,34 @@ src/
     hero.css                # hero layout, title, scroll strip + crosses
     reel.css                # showreel layout, swirl, title/desc, video frame, watch pill
     featured.css            # ✅ featured projects: 2-col grid, project-item, reveals
+    goal.css                # ✅ goal/philosophy: 8vw title, texts col 8-12, image ratio boxes
+    tunnel.css              # ✅ tunnel zone: 400vh sticky scrub block, is-black-bg state
+    endConfetti.css         # ✅ end confetti canvas positioning
     end.css                 # ✅ end/CTA: dark sticky block, crosses, per-char title, pill
+    footer.css              # ✅ footer: white bleed bg, contact grid, newsletter, bottom bar
+    scrollNav.css           # ✅ scroll-nav: dark #121416 strip, green bar, 5 crosses
+    menu.css                # ✅ header menu panel: card stack, staggered open/close
+    preloader.css           # ✅ preloader: black layer, bottom-left odometer digits
+    videoOverlay.css        # ✅ fullscreen player: controls grid, big close cursor, fallback
   scene/
     HeroScene.ts            # three.js + Rapier hero (jacks pile, pointer push, click burst)
     jackGeometry.ts         # procedural "jack" geometry (lathe arms merged)
+    TunnelScene.ts          # ✅ scroll-scrubbed gem tunnel (instanced octahedra, fog)
+    endConfetti.ts          # ✅ End confetti field (canvas-2D, parallax, pointer repel)
   ui/
     splitWords.ts           # splitWords() + splitChars() — overflow-hidden masks for reveals
     intro.ts                # hero entrance choreography (GSAP)
     scroll.ts               # Lenis + ScrollTrigger wiring; exposes window.__lenis in DEV
     reel.ts                 # showreel scroll animations
     featured.ts             # ✅ featured projects reveals + hover-to-play playback
+    goal.ts                 # ✅ goal reveals: line masks, word rise, frame clip+parallax
+    tunnel.ts               # ✅ tunnel scrub: is-black-bg toggle, title choreography, onProgress
     end.ts                  # ✅ end/CTA reveal (subtitle, per-char title, deco strokes)
+    footer.ts               # ✅ footer: staircase, newsletter reveal+form, bottom reveals
+    scrollNav.ts            # ✅ green next-bar scrub (full at page bottom) + text rise
+    menu.ts                 # ✅ menu open/close, Esc/outside close, newsletter validate
+    preloader.ts            # ✅ createPreloader(): setProgress()/finish(), odometer roll
+    videoOverlay.ts         # ✅ setupVideoOverlay(): open/close, seek, fallback, cursor
     trailCursor.ts          # site-wide WebGL cursor mist trail  [KEEP]
 ```
 
@@ -190,29 +214,29 @@ The real home page DOM (verified, see `reference/structure.txt`), in order:
    top-margin, `.project-item-main` 65% ratio box, hover-video, `.project-item-line-1`
    (category) + `.project-item-line-2` (name, 3vw masked) + arrow icon, `#home-featured-cta`
    flood pill. Ours uses 6 original placeholder projects + gradient placeholders.
-4. **Goal / Philosophy** — `#home-goal` ⏳ NOT built. Big title (8vw), paragraph block
+4. **Goal / Philosophy** — `#home-goal` ✅ built (our `#goal`, content layer only). Big title (8vw), paragraph block
    (`grid-column 8/12`), two stacked image reveals (`#home-goal-image-in/out`), AND a
    `#home-goal-tunnel-title`. **Has `padding-bottom: calc(var(--vh)*4200)`** — i.e. a
    ~42-screen scroll zone that drives the WebGL **tunnel / scene morph**. The content
    layer (type + image reveals) can be built first; the 3D tunnel is the big piece.
-5. **End / CTA** — `#end-section` (inside `#page-extra-sections`) ⏳ NOT built. Height
+5. **End / CTA** — `#end-section` (inside `#page-extra-sections`) ✅ built (our `#end`). Height
    `350vh`, `#end-section-title` 10vw link with per-char masked reveal + over/under-line
    decorations, 5 corner crosses, `#end-bottom` animated scroll-down pill. Switches the
    page bg (`html.is-black-bg` / `is-white-bg`).
-6. **Footer** — `#footer-section` ⏳ NOT built. 100vh, white bg, 12-col: address (hover
+6. **Footer** — `#footer-section` ✅ built (our `#footer`). 100vh, white bg, 12-col: address (hover
    shift), socials (hover slide w/ rotated arrow), enquiries/business links (underline
    wipe), newsletter input (animated bg + arrow), `#footer-bottom` (copyright, labs link,
    tagline, back-to-top circle btn). Full measurements in `reference/css-featured-goal.txt`.
-7. **Scroll nav** — `#scroll-nav-section` ⏳ NOT built. Dark `#121416`, "next" progress bar
+7. **Scroll nav** — `#scroll-nav-section` ✅ built (our `#scroll-nav`). Dark `#121416`, "next" progress bar
    (green `--color-green`), row of 5 crosses, big uppercase text.
 
 Header/overlay pieces also present:
-- `#header-menu` ⏳ — full menu panel (links w/ text-swap + dot, newsletter, talk, labs);
+- `#header-menu` ✅ — full menu panel (links w/ text-swap + dot, newsletter, talk, labs);
   opens with `.--opened`, links rise/rotate in with staggered `--open-delay`.
-- `#preloader` ⏳ — black screen, bottom-left `#preloader-percent-digits` (per-digit), then
+- `#preloader` ✅ — black screen, bottom-left `#preloader-percent-digits` (per-digit), then
   `html.is-ready` fades it out.
-- `#video-overlay` ⏳ — fullscreen Vimeo-style player (progress bar, play/mute, cursor).
-- `#transition-overlay` ⏳ — full-screen page-transition layer.
+- `#video-overlay` ✅ — fullscreen player (progress bar, play/mute, close cursor, fallback).
+- `#transition-overlay` ⏳ — full-screen page-transition layer (needs routing first).
 
 Their engine streams `.buf` assets hinting at later 3D scenes (astronaut, diamond,
 earth_card, broken_glass, tunnel, terrain, plant) — i.e. **scroll-driven scene
@@ -227,9 +251,10 @@ the signature "expensive" feel and the hardest remaining piece.
 2. ✅ **Featured projects** (`#featured`) — done + verified (build green, reveals fire,
    2-col↔1-col responsive). 6 placeholder projects; swap in real media via the
    `.project-item-video` `data-src` hook when available.
-3. ⏳ **Goal / Philosophy content layer** (`#home-goal` → `#goal`) — build the type +
-   paragraph + image reveals first with a moderate scroll length. Leave a clearly marked
-   scroll zone for the future tunnel scene. NEXT.
+3. ✅ **Goal / Philosophy content layer** (`#home-goal` → `#goal`) — built + verified.
+   Exact reference metrics (8vw/11em title, texts col 8–12, both image ratio boxes with
+   grid-gap bleeds, tunnel title stub). Scroll tail is `padding-bottom: calc(var(--vh)*150)`
+   — restore `*4200` when the tunnel canvas lands (loud comment marks it in goal.css).
 4. ✅ **End / CTA** (`#end`) — built AND corrected to match the real reference (user sent a
    desktop screenshot). Now: **transparent/off-white bg** (NOT black), **black lowercase**
    title `Let's work together!` (two lines), decorative strokes are **hover-only** (were
@@ -240,16 +265,42 @@ the signature "expensive" feel and the hardest remaining piece.
    shapes scattered behind it** (same shapes as the hero) — that's the persistent-canvas
    scene system (#9), the big piece. Goal/tunnel inserts BEFORE `#end` (placeholder comment
    in index.html marks the spot).
-5. ⏳ **Footer** (`#footer-section`) — address/socials/enquiries/newsletter + back-to-top.
-   Highly mechanical; all measurements already in `reference/css-featured-goal.txt`.
-6. ⏳ **Scroll nav** (`#scroll-nav-section`) — dark next-section progress bar + crosses.
-7. ⏳ **Header menu panel** (`#header-menu`) — open/close overlay, nav links (text-swap +
-   dot), newsletter, talk, labs. We only built the closed header bar.
-8. ⏳ **Preloader** (`#preloader`) — percent counter, then `html.is-ready` reveal.
-9. ⏳ **Scroll-driven scene transitions** — THE BIG ONE: morph the canvas scene through the
-   `#home-goal` 4200vh zone (camera moves, objects transform: astronaut→diamond→earth→
-   tunnel→terrain→plant). Its own multi-session effort.
-10. ⏳ **Video overlay** + **page transition overlay** — fullscreen player + route wipes.
+5. ✅ **Footer** (`#footer`) — built + verified (hover staircase, socials slide-in arrow,
+   underline wipes, newsletter bg scaleX reveal + local-only validation, bottom-row masked
+   rises, back-to-top conveyor button; full-bleed white #footer-bg sheet).
+6. ✅ **Scroll nav** (`#scroll-nav`) — built + verified. Green bar scrubs `scaleX` 0→1 and
+   is full exactly at page bottom (must stay the LAST element on the page). Real site
+   navigates to the next page on completion — we are single-page, so it stops there.
+7. ✅ **Header menu panel** (`#header-menu`) — built + verified (CSS-transition card stack,
+   staggered open/close delays, text-swap link hovers, Esc/outside-click close, mobile
+   talk card, labs card with diagonal arrow swap).
+8. ✅ **Preloader** (`#preloader`) — built + verified. `createPreloader()` API: boot calls
+   `setProgress(40)` (fonts) / `setProgress(80)` (scene chunk) / `await finish()` before
+   `playIntro`. Odometer digit roll, ≥800ms min visible, `html.is-ready`, exit slide.
+9. 🟡 **Scroll-driven scene transitions** — FIRST SLICE SHIPPED (2026-06-10 session 3b,
+   from user-supplied real-site screenshots):
+   - `#tunnel` sticky zone inside `#goal` (400vh study cut; tunnel.css/tunnel.ts):
+     `html.is-black-bg` page state for 0.03<p<0.99, scrubbed 3-line white title
+     (masked rise → hold → scale-past-camera), full-bleed within the .section grid.
+   - `TunnelScene.ts`: scroll-scrubbed three.js gem tunnel (240 instanced octahedra,
+     icy palette, fog, camera flies z=4→-116 with sway; smoothed progress; rAF only
+     while the zone intersects; reduced-motion = static frame). Lazy chunk (4.7KB +
+     shared three chunk). Wired in main.ts AFTER hero scene start, failure-isolated.
+   - `endConfetti.ts`: the End section's flat confetti shape field (canvas-2D, seeded
+     scatter, ~90-130 original shapes matching the real palette, scroll parallax,
+     pointer repel, IntersectionObserver-gated rAF).
+   - End title fixed to TWO stacked lines (display:block on .end-title-line) and the
+     deco strokes now DRAW IN with the reveal (real site shows them at rest — newer
+     user screenshot supersedes the session-2 hover-only correction).
+   STILL TO DO: replace the gem study with the full scene-morph choreography
+   (astronaut→diamond→earth→tunnel→terrain→plant equivalents, ORIGINAL assets), restore
+   the 4200vh zone, persistent single canvas across hero/goal/end, End-section 3D
+   shapes (the 2D confetti field stands in meanwhile). The user may also supply an
+   original video for a literally-scrubbed video variant (public/tunnel/).
+10. ✅ **Video overlay** — built + verified (open from `#reel-watch`, fade, seek bar with
+    drag, play/mute, big white "Close" follow-cursor, Esc/surface-click/mobile-btn close,
+    Lenis stopped while open, graceful fallback when `/reel/desktop.mp4` is absent).
+    ⏳ **Page transition overlay** — not built (needs multi-page routing first).
 
 For each: pull the real CSS for that section from `reference/` (or re-fetch per §8), build
 pixel-accurate against those measurements, keep copy/media as ORIGINAL placeholders, then
@@ -303,3 +354,22 @@ in good shape. The **reel** has not had a formal review pass yet — do one afte
   all copy + the LUSION wordmark before any public use — that content is theirs.
 - **Reduced motion**: every animation has a `prefers-reduced-motion` fallback; keep that
   invariant when adding sections.
+- **ScrollTrigger positions go stale during boot**: triggers are created before fonts/pin
+  spacers settle layout, so `main.ts` calls `ScrollTrigger.refresh()` once after
+  `preloader.finish()`. Without it, deep-page triggers (goal image reveals) never fire.
+- **Boot always restarts at top** (like the real site): Chrome applies history scroll
+  restoration asynchronously and GSAP's ScrollTrigger flips `history.scrollRestoration`
+  back to `auto` after refreshes, so `main.ts` re-forces top AFTER `preloader.finish()`.
+  Creating ScrollTriggers while the browser restores a deep scroll into a pinned layout
+  crashes ScrollTrigger's init refresh ("reading 'end'") — booting from top avoids it.
+- **Hidden/occluded tab = rAF fully suspended** (Chrome): gsap freezes, the preloader sits
+  at 100, CDP screenshots time out ("renderer frozen"). NOT a site bug — it self-heals on
+  visibility. For automated verification: bring the window forward (Win32
+  `SetForegroundWindow` via PowerShell + `Ctrl+9` SendKeys to activate the tab), or drive
+  gsap manually: `import('/node_modules/.vite/deps/gsap.js?v=<hash>')` then
+  `setInterval(() => gsap.ticker.tick(), 16)`.
+- **Vite serves missing media as 200 text/html** (SPA fallback), so `<video>` never fires
+  `error` on its own with `preload="none"`. videoOverlay.ts forces `load()` on open and
+  also treats "readyState 0 shortly after loadstart" as missing.
+- **`#scroll-nav` must stay the last element on the page** — its progress bar scrub ends
+  at `'bottom bottom'`.
