@@ -1,0 +1,184 @@
+/* Project detail overlay — the "open a project" flow. On the real site a
+ * tile click navigates to /projects/<slug> behind a full-screen transition
+ * wipe; we are a single page, so a fixed overlay plays the same gesture:
+ * panel wipes up, hero media + type reveal, close reverses. */
+#project-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  visibility: hidden;
+  pointer-events: none;
+  font-size: clamp(0.875rem, 1vw, 2rem);
+  color: var(--color-black);
+}
+
+#project-overlay.is-open {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* the wipe panel itself — gsap drives its translateY */
+#project-overlay-inner {
+  position: absolute;
+  inset: 0;
+  background: var(--color-off-white);
+  transform: translateY(100%);
+  will-change: transform;
+}
+
+#project-overlay-scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: calc(var(--base-padding-y) * 2.5) var(--base-padding-x)
+    calc(var(--base-padding-y) * 3);
+}
+
+#project-overlay-close {
+  position: absolute;
+  top: var(--base-padding-y);
+  right: var(--base-padding-x);
+  z-index: 2;
+  width: 2.8em;
+  height: 2.8em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 100%;
+  background: var(--color-dark-white);
+  color: var(--color-black);
+  transition:
+    background-color 0.3s,
+    transform 0.3s cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#project-overlay-close:hover,
+#project-overlay-close:focus-visible {
+  background: var(--color-white);
+  transform: scale(1.08);
+}
+
+#project-overlay-close svg {
+  width: 35%;
+  height: auto;
+}
+
+/* --- hero media ----------------------------------------------------------- */
+#project-overlay-hero {
+  position: relative;
+  width: 100%;
+  height: calc(var(--vh, 1vh) * 62);
+  border-radius: var(--global-border-radius);
+  overflow: hidden;
+  background: var(--color-ink);
+  will-change: transform, clip-path;
+}
+
+#project-overlay-media {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+#project-overlay-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+#project-overlay-video.is-playing {
+  opacity: 1;
+}
+
+/* --- head: meta + title ---------------------------------------------------- */
+#project-overlay-head {
+  margin-top: 2.5em;
+}
+
+#project-overlay-meta {
+  margin: 0 0 0.8em;
+  font-size: 0.9vw;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+#project-overlay-title {
+  position: relative;
+  left: -0.04em;
+  margin: 0;
+  overflow: hidden;
+  font-size: 7vw;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+#project-overlay-title .title-inner {
+  display: inline-block;
+  will-change: transform;
+}
+
+/* --- body: description + visit pill ---------------------------------------- */
+#project-overlay-body {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--grid-gap);
+  margin-top: 3em;
+}
+
+#project-overlay-desc {
+  grid-column: 1 / 7;
+  margin: 0;
+  font-size: 1.5em;
+  line-height: 1.4;
+}
+
+#project-overlay-visit {
+  grid-column: 9 / 13;
+  justify-self: end;
+  align-self: start;
+  font-size: clamp(0.875rem, 1vw, 1.75rem);
+  height: 3.375em;
+}
+
+/* --- responsive ------------------------------------------------------------ */
+@media (max-width: 768px) {
+  #project-overlay-hero {
+    height: calc(var(--vh, 1vh) * 42);
+  }
+
+  #project-overlay-meta {
+    font-size: 3vw;
+  }
+
+  #project-overlay-title {
+    font-size: 13vw;
+  }
+
+  #project-overlay-body {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    row-gap: 2.5em;
+  }
+
+  #project-overlay-desc {
+    grid-column: 1 / 7;
+    font-size: 1.125em;
+  }
+
+  #project-overlay-visit {
+    grid-column: 1 / 7;
+    justify-self: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #project-overlay-inner {
+    transform: none;
+  }
+}

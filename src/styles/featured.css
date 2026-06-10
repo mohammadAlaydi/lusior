@@ -43,7 +43,7 @@
 #featured-disclaimer {
   position: absolute;
   right: 0;
-  bottom: 0.3em;
+  bottom: 0;
   width: calc(var(--grid-space) * 3 + var(--grid-gap) * 2);
   margin: 0;
   font-size: 0.9vw;
@@ -68,18 +68,10 @@
   will-change: transform;
 }
 
-/* rows after the first get generous editorial breathing room */
+/* rows after the first get breathing room; columns stay LEVEL like the
+ * reference (no per-column stagger — rows align) */
 .project-item:nth-child(n + 3) {
-  margin-top: clamp(4em, 8vw, 10em);
-}
-
-/* the right column rides a touch lower for an editorial, staggered rhythm */
-.project-item:nth-child(even) {
-  margin-top: 6em;
-}
-
-.project-item:nth-child(n + 3):nth-child(even) {
-  margin-top: clamp(10em, 14vw, 16em);
+  margin-top: 5em;
 }
 
 .project-item-main {
@@ -196,21 +188,17 @@
 
 .project-item-name {
   display: inline-block;
-  transition: transform 0.45s cubic-bezier(0.35, 0, 0, 1);
 }
 
+/* reference mechanism: the arrow lives 1em OUTSIDE the masked line; hovering
+ * slides the whole inner (arrow + name) right so the arrow enters the mask */
 .project-item-line-2-icon {
   position: absolute;
-  left: -0.05em;
-  top: 0.08em;
+  left: -1em;
+  top: 0.1em;
   width: 0.8em;
   height: 0.8em;
-  color: var(--color-blue);
-  opacity: 0;
-  transform: translate3d(-0.6em, 0, 0);
-  transition:
-    opacity 0.4s cubic-bezier(0.35, 0, 0, 1),
-    transform 0.45s cubic-bezier(0.35, 0, 0, 1);
+  color: currentColor;
 }
 
 .project-item-line-2-icon svg {
@@ -218,15 +206,13 @@
   height: 100%;
 }
 
-.project-item:hover .project-item-name,
-.project-item:focus-visible .project-item-name {
-  transform: translate3d(1em, 0, 0);
+.project-item-line-2-inner {
+  transition: transform 0.45s cubic-bezier(0.35, 0, 0, 1);
 }
 
-.project-item:hover .project-item-line-2-icon,
-.project-item:focus-visible .project-item-line-2-icon {
-  opacity: 1;
-  transform: translateZ(0);
+.project-item:hover .project-item-line-2-inner,
+.project-item:focus-visible .project-item-line-2-inner {
+  transform: translate3d(1em, 0, 0);
 }
 
 .project-item:focus-visible {
@@ -269,14 +255,8 @@
     grid-template-columns: 1fr;
   }
 
-  .project-item:nth-child(n + 3),
-  .project-item:nth-child(even),
-  .project-item:nth-child(n + 3):nth-child(even) {
-    margin-top: 3.5em;
-  }
-
-  .project-item:first-child {
-    margin-top: 0;
+  .project-item:not(:first-child) {
+    margin-top: 2em;
   }
 
   #featured-title {

@@ -76,25 +76,7 @@ export function setupFeaturedSection(): void {
     }
   }
 
-  // --- column parallax ------------------------------------------------------
-  items.forEach((item, index) => {
-    const depth = index % 2 === 0 ? 1 : -1;
-    gsap.fromTo(
-      item,
-      { y: 0 },
-      {
-        y: () => depth * Math.min(window.innerHeight * 0.06, 80),
-        ease: 'none',
-        scrollTrigger: {
-          trigger: item,
-          start: 'top bottom',
-          end: 'bottom top',
-          scrub: true,
-          invalidateOnRefresh: true,
-        },
-      },
-    );
-  });
+  // (No column parallax: the reference keeps both columns level — rows align.)
 
   // --- CTA ------------------------------------------------------------------
   const cta = document.getElementById('featured-cta');
