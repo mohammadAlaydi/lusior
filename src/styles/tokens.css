@@ -1,0 +1,71 @@
+/*
+ * Design tokens measured from the reference site (lusion.co).
+ * Values are facts (colors, spacing, type scale) — implementation is original.
+ */
+@font-face {
+  font-family: 'Aeonik';
+  src: url('/fonts/Aeonik-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Aeonik';
+  src: url('/fonts/Aeonik-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: block;
+}
+/* Free fallback with very similar metrics/feel (drop Aeonik files in /public/fonts to upgrade). */
+@font-face {
+  font-family: 'Aspekta';
+  src: url('/fonts/Aspekta-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Aspekta';
+  src: url('/fonts/Aspekta-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  /* palette */
+  --color-white: #ffffff;
+  --color-off-white: #f0f1fa;
+  --color-dark-white: #e4e6ef;
+  --color-black: #000000;
+  --color-ink: #0d0e13; /* webgl canvas backdrop */
+  --color-blue: #1a2ffb;
+  --color-grey-blue: #2b2e3a;
+
+  /* layout */
+  --grid-gap: 4vw;
+  /* width of a single column in the 12-col grid (11 gaps between 12 columns) */
+  --grid-space: calc((100% - 11 * var(--grid-gap)) / 12);
+  --base-padding-x: max(5vw, 40px);
+  --base-padding-y: clamp(30px, 4vw, 50px);
+  --global-border-radius: 20px;
+
+  /* type + ornaments */
+  --header-size: clamp(1rem, 1vw, 1.5rem);
+  --cross-size: clamp(0.875rem, 1vw, 2rem);
+
+  --font-sans: 'Aeonik', 'Aspekta', 'Inter', system-ui, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+
+  /* set from JS for mobile-safe viewport units */
+  --vh: 1vh;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --grid-gap: 2vw;
+    --base-padding-x: 25px;
+    --base-padding-y: 25px;
+    --global-border-radius: 15px;
+  }
+}

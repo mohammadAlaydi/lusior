@@ -1,0 +1,341 @@
+/* Showreel section — layout metrics measured from the reference. */
+#reel {
+  font-size: clamp(0.875rem, 1vw, 2rem);
+  z-index: 1;
+}
+
+/* big blue swirl that draws itself in as you scroll — behind all content */
+#reel-swirl {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  aspect-ratio: 1600 / 1200;
+  height: auto;
+  z-index: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+#reel-title,
+#reel-content,
+#reel-container {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- title -------------------------------------------------------------- */
+#reel-title {
+  position: relative;
+  grid-column: 1 / -1;
+  margin: 1em 0 0.5em;
+  left: -0.03em;
+  font-size: 10vw;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  will-change: transform;
+}
+
+.reel-line-mask {
+  display: block;
+  overflow: hidden;
+}
+
+/* word-level masked reveal (split + animated from JS; visible without JS) */
+.reel-line {
+  display: block;
+  position: relative;
+  bottom: -0.06em;
+}
+
+#reel-title .word-mask,
+#reel-desc .word-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+#reel-title .word,
+#reel-desc .word {
+  display: inline-block;
+  position: relative;
+  will-change: transform;
+}
+
+/* line 1 is indented by two columns + two gaps, like the reference */
+#reel-line-1 {
+  padding-left: calc(((100% - 11 * var(--grid-gap)) / 12) * 2 + var(--grid-gap) * 2);
+}
+
+/* --- content (right column) --------------------------------------------- */
+#reel-content {
+  grid-column: 7 / span 6;
+  height: fit-content;
+  font-size: clamp(1rem, 1.5vw, 3rem);
+  line-height: 1.4;
+}
+
+#reel-desc {
+  margin: 0;
+  font-size: 1em;
+  font-weight: 400;
+}
+
+#reel-cta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75em;
+  margin: 3em 0 6em;
+  padding: 1.1em 2.8em 1.1em 1.5em;
+  font-size: 0.55em;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  background: var(--color-white);
+  border-radius: 6.25em;
+  overflow: hidden;
+  transition: color 0.5s cubic-bezier(0.35, 0, 0, 1) 0.1s;
+}
+
+#reel-cta-dot {
+  position: relative;
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 100px;
+  background: var(--color-black);
+  transition:
+    background 0.5s cubic-bezier(0.35, 0, 0, 1),
+    transform 0.4s cubic-bezier(0.35, 0, 0, 1);
+}
+
+#reel-cta-text {
+  position: relative;
+  z-index: 1;
+  transition: transform 0.4s cubic-bezier(0.35, 0, 0, 1);
+}
+
+#reel-cta-arrow {
+  position: absolute;
+  right: 1em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2em;
+  height: 1.2em;
+  color: var(--color-white);
+  transform: translate3d(3em, 0, 0);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0, 1);
+  z-index: 1;
+}
+
+#reel-cta:hover,
+#reel-cta:focus-visible {
+  color: var(--color-white);
+}
+
+#reel-cta:hover #reel-cta-dot,
+#reel-cta:focus-visible #reel-cta-dot {
+  /* the dot inflates to flood the pill with blue */
+  transform: translate3d(3em, 0, 0) scale(22);
+  background: var(--color-blue);
+}
+
+#reel-cta:hover #reel-cta-text,
+#reel-cta:focus-visible #reel-cta-text {
+  transform: translate3d(-1.1em, 0, 0);
+}
+
+#reel-cta:hover #reel-cta-arrow,
+#reel-cta:focus-visible #reel-cta-arrow {
+  transform: translateZ(0);
+}
+
+#reel-cta:focus-visible {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 3px;
+}
+
+/* --- video -------------------------------------------------------------- */
+#reel-container {
+  grid-column: 1 / -1;
+  /* scroll room for the pinned expansion lives in ScrollTrigger's pin spacer */
+  margin-bottom: 10vh;
+}
+
+#reel-frame {
+  position: relative;
+  width: 100%;
+  will-change: transform;
+  transform-origin: 0% 0%;
+}
+
+.reel-deco {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: var(--cross-size);
+}
+
+.reel-deco-top {
+  top: calc(-2 * var(--cross-size));
+}
+
+.reel-deco-bottom {
+  bottom: calc(-2 * var(--cross-size));
+}
+
+.reel-deco .cross {
+  top: 0;
+}
+
+.reel-deco .cross:nth-child(1) {
+  left: 0;
+}
+.reel-deco .cross:nth-child(2) {
+  left: calc(25% - var(--cross-size) / 2);
+}
+.reel-deco .cross:nth-child(3) {
+  left: calc(50% - var(--cross-size) / 2);
+}
+.reel-deco .cross:nth-child(4) {
+  left: calc(75% - var(--cross-size) / 2);
+}
+.reel-deco .cross:nth-child(5) {
+  left: calc(100% - var(--cross-size));
+}
+
+#reel-media {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 */
+  border-radius: 12px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 160% at 18% 0%, #262a3a 0%, transparent 55%),
+    radial-gradient(130% 140% at 85% 100%, #11163a 0%, transparent 60%),
+    linear-gradient(160deg, #0d0e13 10%, #1a1d29 50%, #0d0e13 90%);
+}
+
+#reel-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  will-change: transform;
+}
+
+#reel-video[hidden] {
+  display: none;
+}
+
+/* animated placeholder shimmer while no video file is present */
+#reel-placeholder {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(240, 241, 250, 0.07) 48%,
+    rgba(240, 241, 250, 0.12) 50%,
+    rgba(240, 241, 250, 0.07) 52%,
+    transparent 70%
+  );
+  background-size: 280% 280%;
+  animation: reel-sheen 7s linear infinite;
+}
+
+@keyframes reel-sheen {
+  from {
+    background-position: 120% 0%;
+  }
+  to {
+    background-position: -60% 0%;
+  }
+}
+
+/* --- centered watch pill ------------------------------------------------- */
+#reel-watch {
+  position: absolute;
+  left: calc(50% - 4.7em);
+  top: calc(50% - 3em);
+  width: 9.4em;
+  height: 6em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 22.5em;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+#reel-watch-base {
+  position: absolute;
+  inset: 0;
+  border-radius: 22.5em;
+  background: var(--color-white);
+  transition: background 0.3s cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#reel-watch-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--color-blue);
+  transform: scale3d(1, 0, 1);
+  transform-origin: bottom;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#reel-watch svg {
+  position: relative;
+  z-index: 1;
+  width: 2em;
+  height: 2em;
+  color: var(--color-black);
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#reel-watch:hover #reel-watch-fill,
+#reel-watch:focus-visible #reel-watch-fill {
+  transform: scaleZ(1);
+}
+
+#reel-watch:hover svg,
+#reel-watch:focus-visible svg {
+  color: var(--color-white);
+}
+
+#reel-watch:focus-visible {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 3px;
+}
+
+/* --- responsive ---------------------------------------------------------- */
+@media (max-width: 1100px) {
+  #reel-title {
+    font-size: 13.8vw;
+    margin-bottom: 1em;
+  }
+
+  #reel-line-1 {
+    padding-left: 0;
+  }
+
+  #reel-content {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #reel-placeholder {
+    animation: none;
+  }
+
+  #reel-swirl-path {
+    stroke-dasharray: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}

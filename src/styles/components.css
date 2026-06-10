@@ -1,0 +1,87 @@
+/*
+ * Shared UI components reused across sections.
+ * Everything is sized in `em` so each instance scales from its own font-size.
+ */
+
+/* --- flood pill CTA -------------------------------------------------------
+ * White pill whose inner dot inflates to flood it with brand blue while the
+ * label slides left and an arrow slides in from the right. Used by the
+ * showreel and featured-projects calls to action.
+ */
+.cta-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 1em;
+  padding: 1em 1.5em 1em 1.625em;
+  background: var(--color-white);
+  border-radius: 5.3125em;
+  overflow: hidden;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--color-black);
+  box-shadow:
+    0 6px 10px #0000000a,
+    0 2px 4px #0000000a;
+  cursor: pointer;
+  transition: color 0.5s cubic-bezier(0.35, 0, 0, 1) 0.1s;
+}
+
+.cta-pill__dot {
+  position: relative;
+  z-index: 1;
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 100px;
+  background: var(--color-black);
+  transition:
+    background 0.5s cubic-bezier(0.35, 0, 0, 1),
+    transform 0.4s cubic-bezier(0.35, 0, 0, 1);
+}
+
+.cta-pill__text {
+  position: relative;
+  z-index: 1;
+  transition: transform 0.4s cubic-bezier(0.35, 0, 0, 1);
+}
+
+.cta-pill__arrow {
+  position: absolute;
+  right: 1em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2em;
+  height: 1.2em;
+  color: var(--color-white);
+  transform: translate3d(3em, 0, 0);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0, 1);
+  z-index: 1;
+}
+
+.cta-pill:hover,
+.cta-pill:focus-visible {
+  color: var(--color-white);
+}
+
+.cta-pill:hover .cta-pill__dot,
+.cta-pill:focus-visible .cta-pill__dot {
+  transform: translate3d(4em, 0, 0) scale(32);
+  background: var(--color-blue);
+}
+
+.cta-pill:hover .cta-pill__text,
+.cta-pill:focus-visible .cta-pill__text {
+  transform: translate3d(-1.5em, 0, 0);
+}
+
+.cta-pill:hover .cta-pill__arrow,
+.cta-pill:focus-visible .cta-pill__arrow {
+  transform: translateZ(0);
+}
+
+.cta-pill:focus-visible {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 3px;
+}

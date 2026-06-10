@@ -1,0 +1,160 @@
+#hero {
+  height: 100vh;
+  align-content: flex-start;
+  grid-template-rows: auto 1fr;
+}
+
+@supports (height: 100svh) {
+  #hero {
+    height: 100svh;
+  }
+}
+
+#hero-title {
+  position: relative;
+  grid-column: 4 / span 5;
+  height: fit-content;
+  margin: 0;
+  font-size: 2.5vw;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  /* Aspekta runs ~8% wider than Aeonik; borrow the trailing grid gap so the
+     line breaks land like the reference (3 lines on desktop). */
+  margin-right: calc(-0.9 * var(--grid-gap));
+  will-change: transform;
+}
+
+/* word-reveal scaffolding (populated by splitWords) */
+#hero-title .word-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+#hero-title .word {
+  display: inline-block;
+  position: relative;
+  top: -0.1em;
+  transform: translate3d(0, 1.5em, 0) rotate(15deg);
+  transform-origin: 0% 50%;
+  will-change: transform;
+}
+
+#hero-visual {
+  position: relative;
+  grid-column: 1 / span 12;
+  margin-top: calc(var(--base-padding-y) * 3 / 5);
+  border-radius: var(--global-border-radius);
+  background: var(--color-ink);
+  overflow: hidden;
+  cursor: pointer;
+  /* fills the remaining 1fr row; bottom edge sits one base-padding above the viewport edge */
+  min-height: 0;
+}
+
+#hero-visual canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+/* soft vignette matching the reference's moody framing */
+#hero-visual::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 90% at 50% 38%,
+    transparent 55%,
+    rgba(4, 5, 9, 0.5) 100%
+  );
+}
+
+/* --- bottom scroll strip ------------------------------------------------ */
+#hero-scrollbar {
+  position: absolute;
+  bottom: 0;
+  left: var(--base-padding-x);
+  width: calc(100% - 2 * var(--base-padding-x));
+  height: var(--base-padding-y);
+  overflow: hidden;
+}
+
+#hero-scroll-label {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  text-transform: uppercase;
+  font-size: var(--cross-size);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.cross {
+  position: absolute;
+  top: calc(50% - var(--cross-size) / 2);
+  width: var(--cross-size);
+  height: var(--cross-size);
+}
+
+.cross::before,
+.cross::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: calc(0.5 * var(--cross-size) - 0.0625 * var(--cross-size));
+  width: var(--cross-size);
+  height: calc(0.125 * var(--cross-size));
+  background: var(--color-black);
+}
+
+.cross::after {
+  transform: rotate(90deg);
+}
+
+.cross:nth-child(1) {
+  left: 0;
+}
+.cross:nth-child(2) {
+  left: calc(33.333% - var(--cross-size) / 2);
+}
+.cross:nth-child(3) {
+  left: calc(66.666% - var(--cross-size) / 2);
+}
+.cross:nth-child(4) {
+  left: calc(100% - var(--cross-size));
+}
+
+/* --- responsive --------------------------------------------------------- */
+@media (max-width: 1100px) {
+  /* 1 / -1 spans the full grid whether it has 12 columns (769-1100px)
+     or 6 columns (<=768px) */
+  #hero-title {
+    grid-column: 1 / -1;
+    font-size: 6vw;
+    margin-top: calc(var(--base-padding-y) + var(--header-size) * 2);
+    margin-right: 0;
+  }
+
+  #hero-visual {
+    grid-column: 1 / -1;
+  }
+
+  .cross:nth-child(2),
+  .cross:nth-child(3) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #hero-title .word {
+    transform: none;
+    top: 0;
+  }
+}

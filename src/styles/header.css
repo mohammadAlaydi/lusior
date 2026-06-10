@@ -1,0 +1,196 @@
+#header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--base-padding-y) var(--base-padding-x);
+  font-size: var(--header-size);
+  color: var(--color-black);
+  pointer-events: none;
+}
+
+#header > * {
+  pointer-events: auto;
+}
+
+#logo {
+  font-weight: 500;
+  font-size: 1.45em;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+#header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+/* --- sound toggle ------------------------------------------------------- */
+#sound-btn {
+  position: relative;
+  width: 2.8em;
+  height: 2.8em;
+  border-radius: 50%;
+  background: var(--color-white);
+  display: grid;
+  place-items: center;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#sound-btn:hover,
+#sound-btn:focus-visible {
+  transform: scale(1.08);
+}
+
+#sound-line {
+  width: 1em;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-black);
+}
+
+/* --- shared pill -------------------------------------------------------- */
+#talk-btn,
+#menu-btn {
+  font-size: 0.875em;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  height: 3.2em;
+  border-radius: 6.25em;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  transition:
+    color 0.4s,
+    background-color 0.4s;
+}
+
+/* --- let's talk --------------------------------------------------------- */
+#talk-btn {
+  position: relative;
+  gap: 0.625em;
+  padding: 0 1.4em 0 1.625em;
+  background: var(--color-grey-blue);
+  color: var(--color-white);
+  overflow: hidden;
+}
+
+#talk-btn .talk-arrow {
+  position: absolute;
+  left: 1.2em;
+  width: 1em;
+  height: 1em;
+  display: grid;
+  place-items: center;
+  transform: translate3d(-2.5em, 0, 0);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#talk-btn .talk-text {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#talk-btn .talk-dot {
+  width: 0.35em;
+  height: 0.35em;
+  border-radius: 50%;
+  background: currentColor;
+  transform: scale(0.9);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#talk-btn:hover,
+#talk-btn:focus-visible {
+  background: var(--color-blue);
+}
+
+#talk-btn:hover .talk-arrow,
+#talk-btn:focus-visible .talk-arrow {
+  transform: translate3d(0, 0, 0);
+}
+
+#talk-btn:hover .talk-text,
+#talk-btn:focus-visible .talk-text {
+  transform: translate3d(1.5em, 0, 0);
+}
+
+#talk-btn:hover .talk-dot,
+#talk-btn:focus-visible .talk-dot {
+  transform: scale(0);
+}
+
+/* --- menu --------------------------------------------------------------- */
+#menu-btn {
+  gap: 0.55em;
+  padding: 0 1.125em 0 1.625em;
+  background: var(--color-dark-white);
+  color: var(--color-black);
+}
+
+#menu-btn:hover,
+#menu-btn:focus-visible {
+  background: var(--color-white);
+}
+
+.menu-dots {
+  display: inline-flex;
+  gap: 0.2em;
+}
+
+.menu-dots i {
+  width: 0.3em;
+  height: 0.3em;
+  border-radius: 50%;
+  background: currentColor;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#menu-btn:hover .menu-dots i:first-child,
+#menu-btn:focus-visible .menu-dots i:first-child {
+  transform: translateX(0.5em);
+}
+
+#menu-btn:hover .menu-dots i:last-child,
+#menu-btn:focus-visible .menu-dots i:last-child {
+  transform: translateX(-0.5em);
+}
+
+/* --- keyboard focus ------------------------------------------------------ */
+#logo:focus-visible,
+#sound-btn:focus-visible,
+#talk-btn:focus-visible,
+#menu-btn:focus-visible {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 3px;
+}
+
+@media (max-width: 768px) {
+  #header {
+    font-size: clamp(0.75rem, 1vw, 2rem);
+  }
+}
+
+/* keep the pill row inside the viewport on very narrow screens */
+@media (max-width: 480px) {
+  #header {
+    font-size: 0.6875rem;
+  }
+
+  #header-right {
+    gap: 0.35em;
+  }
+
+  #talk-btn {
+    padding: 0 1em 0 1.2em;
+  }
+
+  #menu-btn {
+    padding: 0 0.9em 0 1.2em;
+  }
+}

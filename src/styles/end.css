@@ -1,0 +1,262 @@
+/* End / CTA — the closing "let's work together" block. On the real site this
+ * sits on the off-white page with the colourful physics shapes scattered
+ * behind it; the title is black and the decorative strokes are a hover
+ * flourish. The full-page shape field is the persistent-canvas milestone;
+ * for now the section is transparent so the page colour (and future canvas)
+ * shows through. */
+#end {
+  position: relative;
+  z-index: 1;
+  display: block;
+  height: 150vh;
+  padding: 0;
+  font-size: clamp(0.875rem, 1vw, 2rem);
+  color: var(--color-black);
+  background: transparent;
+}
+
+/* pinned viewport for the duration of the tall section */
+#end-inner {
+  position: sticky;
+  top: 0;
+  height: calc(var(--vh, 1vh) * 100);
+  overflow: hidden;
+}
+
+#end-content {
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 3em);
+  transform: translate(-50%, -50%);
+  width: 100%;
+  padding: 0 var(--base-padding-x);
+  text-align: center;
+}
+
+/* --- corner cross frame ------------------------------------------------- */
+#end-crosses {
+  position: absolute;
+  width: 60vw;
+  height: calc(100% + 10vh);
+  left: calc(50% - 30vw);
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.end-cross {
+  position: absolute;
+  width: var(--cross-size);
+  height: var(--cross-size);
+}
+
+.end-cross::before,
+.end-cross::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: calc(0.5 * var(--cross-size) - 0.0625 * var(--cross-size));
+  width: var(--cross-size);
+  height: calc(0.125 * var(--cross-size));
+  background: var(--color-black);
+}
+
+.end-cross::after {
+  transform: rotate(90deg);
+}
+
+.end-cross:nth-child(1) {
+  left: 0;
+  top: 0;
+}
+.end-cross:nth-child(2) {
+  right: 0;
+  top: 0;
+}
+.end-cross:nth-child(3) {
+  left: 0;
+  bottom: 0;
+}
+.end-cross:nth-child(4) {
+  left: calc(50% - var(--cross-size) / 2);
+  bottom: 0;
+}
+.end-cross:nth-child(5) {
+  right: 0;
+  bottom: 0;
+}
+
+/* --- subtitle + title --------------------------------------------------- */
+#end-subtitle {
+  overflow: hidden;
+  margin: 0 auto;
+  width: 55%;
+  line-height: 1.4;
+  font-size: 1.2em;
+  text-transform: uppercase;
+  will-change: transform;
+}
+
+#end-title {
+  --font-size: 10vw;
+  position: relative;
+  width: fit-content;
+  margin: 0.4em auto auto;
+  line-height: 1;
+  font-size: var(--font-size);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--color-black);
+  cursor: pointer;
+  will-change: transform;
+}
+
+.end-title-line {
+  position: relative;
+  height: var(--font-size);
+}
+
+.end-title-line:last-child {
+  bottom: 0.02em;
+}
+
+#end-title .char-mask {
+  display: inline-block;
+  overflow: hidden;
+  height: 0.95em;
+  vertical-align: top;
+}
+
+#end-title .char {
+  display: inline-block;
+  position: relative;
+  will-change: transform;
+}
+
+/* decorative strokes that draw in only while the title link is hovered */
+.end-deco {
+  position: absolute;
+  height: 0.07em;
+  background: var(--color-black);
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 0.5s cubic-bezier(0.35, 0, 0, 1);
+}
+
+#end-deco-top {
+  top: 0.85em;
+  left: 0.05em;
+  width: calc(100% - 0.05em);
+}
+
+#end-deco-bl {
+  bottom: 0.12em;
+  left: 0.25em;
+  width: 0.82em;
+}
+
+#end-deco-br {
+  bottom: 0.12em;
+  left: 1.78em;
+  width: 2.45em;
+}
+
+#end-title:hover .end-deco,
+#end-title:focus-visible .end-deco {
+  transform: scaleX(1);
+}
+
+#end-deco-br {
+  transition-delay: 0.06s;
+}
+
+#end-title:focus-visible {
+  outline: none;
+}
+
+/* --- looping scroll-down pill ------------------------------------------- */
+#end-bottom {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--vh, 1vh) * 7);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.1em;
+  height: 3.375em;
+  padding: 0 1.6em;
+  font-size: 1.1em;
+  text-align: center;
+  background: var(--color-white);
+  color: var(--color-black);
+  border-radius: 100px;
+  box-shadow:
+    0 6px 10px #0000000a,
+    0 2px 4px #0000000a;
+}
+
+#end-bottom-text {
+  white-space: nowrap;
+  font-size: 0.75em;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-black);
+}
+
+.end-bottom-arrow {
+  width: 0.85em;
+  height: 0.85em;
+  color: var(--color-black);
+  animation: end-arrow-bounce 1.8s infinite cubic-bezier(0.45, 0, 0.2, 1);
+}
+
+.end-bottom-arrow svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+@keyframes end-arrow-bounce {
+  0%,
+  100% {
+    transform: translateY(-0.14em);
+  }
+  50% {
+    transform: translateY(0.14em);
+  }
+}
+
+/* --- responsive --------------------------------------------------------- */
+@media (max-width: 1100px) {
+  #end-title {
+    --font-size: 6.7vw;
+  }
+}
+
+@media (max-width: 768px) {
+  #end {
+    height: 130vh;
+  }
+
+  #end-title {
+    --font-size: 16vw;
+    width: 100%;
+  }
+
+  #end-subtitle {
+    width: 80%;
+  }
+
+  #end-crosses {
+    width: calc(100% - 2 * var(--base-padding-x));
+    left: var(--base-padding-x);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .end-bottom-arrow {
+    animation: none;
+  }
+}

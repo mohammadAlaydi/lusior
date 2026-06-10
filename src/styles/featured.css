@@ -1,0 +1,308 @@
+/* Featured projects — a two-column editorial project list. Layout metrics
+ * follow the reference's grid; copy and media are original placeholders. */
+#featured {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(0.875rem, 1vw, 2rem);
+  padding-top: clamp(6rem, 12vw, 16rem);
+  padding-bottom: clamp(4rem, 8vw, 12rem);
+}
+
+/* --- section head ------------------------------------------------------- */
+#featured-head {
+  position: relative;
+  grid-column: 1 / -1;
+  margin-bottom: clamp(3rem, 7vw, 9rem);
+}
+
+#featured-title {
+  display: inline-block;
+  position: relative;
+  margin: 0 0 0 -0.07em;
+  padding-top: 0.5em;
+  font-size: 8vw;
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  will-change: transform;
+}
+
+#featured-title .word-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+#featured-title .word {
+  display: inline-block;
+  position: relative;
+  will-change: transform;
+}
+
+#featured-disclaimer {
+  position: absolute;
+  right: 0;
+  bottom: 0.3em;
+  width: calc(var(--grid-space) * 3 + var(--grid-gap) * 2);
+  margin: 0;
+  font-size: 0.9vw;
+  line-height: 1.4;
+  text-transform: uppercase;
+  will-change: transform;
+}
+
+/* --- project grid ------------------------------------------------------- */
+#featured-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--grid-gap);
+}
+
+.project-item {
+  position: relative;
+  display: block;
+  cursor: pointer;
+  color: inherit;
+  will-change: transform;
+}
+
+/* rows after the first get generous editorial breathing room */
+.project-item:nth-child(n + 3) {
+  margin-top: clamp(4em, 8vw, 10em);
+}
+
+/* the right column rides a touch lower for an editorial, staggered rhythm */
+.project-item:nth-child(even) {
+  margin-top: 6em;
+}
+
+.project-item:nth-child(n + 3):nth-child(even) {
+  margin-top: clamp(10em, 14vw, 16em);
+}
+
+.project-item-main {
+  position: relative;
+  padding-top: 65%;
+  border-radius: 15px;
+  overflow: hidden;
+  background: var(--color-ink);
+}
+
+/* placeholder artwork: a soft accent-tinted gradient field with a slow drift */
+.project-item-media {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 140% at 20% 0%, var(--accent, #2b3afb) 0%, transparent 55%),
+    radial-gradient(140% 150% at 90% 100%, #11163a 0%, transparent 60%),
+    linear-gradient(160deg, #0d0e13 10%, #1a1d29 52%, #0d0e13 92%);
+  transform: scale(1.04);
+  transition: transform 0.7s cubic-bezier(0.35, 0, 0, 1);
+}
+
+.project-item-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 32%,
+    rgba(240, 241, 250, 0.08) 49%,
+    rgba(240, 241, 250, 0.14) 50%,
+    rgba(240, 241, 250, 0.08) 51%,
+    transparent 68%
+  );
+  background-size: 280% 280%;
+  animation: project-sheen 8s linear infinite;
+}
+
+.project-item-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.project-item-video.is-playing {
+  opacity: 1;
+}
+
+@keyframes project-sheen {
+  from {
+    background-position: 120% 0%;
+  }
+  to {
+    background-position: -60% 0%;
+  }
+}
+
+.project-item:hover .project-item-media {
+  transform: scale(1);
+}
+
+/* type label pill, bottom-right of the artwork */
+.project-item-toggle {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  height: 2em;
+  padding: 0 0.9em;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 1em;
+  background-color: var(--color-off-white);
+  color: var(--color-black);
+  font-size: 0.8em;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* --- project footer (category + name) ----------------------------------- */
+.project-item-footer {
+  position: relative;
+  width: 100%;
+}
+
+.project-item-line-1 {
+  margin: 1.5em 0 0.7em;
+  font-size: 0.9vw;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  will-change: transform;
+}
+
+.project-item-line-2 {
+  position: relative;
+  left: -0.06em;
+  height: 1em;
+  font-size: 3vw;
+  line-height: 1;
+  overflow: hidden;
+  will-change: transform;
+}
+
+.project-item-line-2-inner {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  will-change: transform;
+}
+
+.project-item-name {
+  display: inline-block;
+  transition: transform 0.45s cubic-bezier(0.35, 0, 0, 1);
+}
+
+.project-item-line-2-icon {
+  position: absolute;
+  left: -0.05em;
+  top: 0.08em;
+  width: 0.8em;
+  height: 0.8em;
+  color: var(--color-blue);
+  opacity: 0;
+  transform: translate3d(-0.6em, 0, 0);
+  transition:
+    opacity 0.4s cubic-bezier(0.35, 0, 0, 1),
+    transform 0.45s cubic-bezier(0.35, 0, 0, 1);
+}
+
+.project-item-line-2-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.project-item:hover .project-item-name,
+.project-item:focus-visible .project-item-name {
+  transform: translate3d(1em, 0, 0);
+}
+
+.project-item:hover .project-item-line-2-icon,
+.project-item:focus-visible .project-item-line-2-icon {
+  opacity: 1;
+  transform: translateZ(0);
+}
+
+.project-item:focus-visible {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 8px;
+  border-radius: 4px;
+}
+
+/* --- "see all" CTA ------------------------------------------------------ */
+#featured-cta {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: clamp(5rem, 12vw, 14rem);
+  font-size: clamp(0.875rem, 1vw, 1.75rem);
+  height: 3.375em;
+}
+
+/* --- responsive --------------------------------------------------------- */
+@media (max-width: 1100px) {
+  #featured-title {
+    font-size: 12vw;
+  }
+
+  .project-item-line-2 {
+    font-size: 5vw;
+  }
+
+  .project-item-line-1 {
+    font-size: 1.6vw;
+  }
+
+  #featured-disclaimer {
+    font-size: 1.4vw;
+    width: calc(var(--grid-space) * 4 + var(--grid-gap) * 3);
+  }
+}
+
+@media (max-width: 768px) {
+  #featured-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .project-item:nth-child(n + 3),
+  .project-item:nth-child(even),
+  .project-item:nth-child(n + 3):nth-child(even) {
+    margin-top: 3.5em;
+  }
+
+  .project-item:first-child {
+    margin-top: 0;
+  }
+
+  #featured-title {
+    font-size: 15vw;
+  }
+
+  #featured-disclaimer {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    margin: 1.5em 0 0;
+    font-size: 3.2vw;
+  }
+
+  .project-item-line-2 {
+    font-size: 7.5vw;
+  }
+
+  .project-item-line-1 {
+    font-size: 3vw;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-item-media::after {
+    animation: none;
+  }
+}
