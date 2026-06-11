@@ -156,23 +156,38 @@
         </section>
 
         <section id="reel" class="section" aria-labelledby="reel-title">
+          <!-- One continuous ribbon: enters at the left edge beside the title,
+               sweeps behind it, loops around the video thumb, then waves out
+               the right edge. Drawn in progressively by scroll (reel.ts). -->
           <svg
             id="reel-swirl"
-            viewBox="0 0 1600 1200"
+            viewBox="0 0 1600 1500"
             fill="none"
             preserveAspectRatio="xMidYMin slice"
             aria-hidden="true"
           >
+            <defs>
+              <linearGradient id="reel-swirl-grad" x1="0%" y1="0%" x2="100%" y2="60%">
+                <stop offset="0%" stop-color="#5d6bff" />
+                <stop offset="50%" stop-color="#2a3cfb" />
+                <stop offset="100%" stop-color="#4453ff" />
+              </linearGradient>
+            </defs>
             <path
               id="reel-swirl-path"
-              d="M -160 430
-                 C 140 250, 240 70, 470 70
-                 C 700 70, 800 330, 590 480
-                 C 460 575, 300 560, 300 415
-                 C 300 305, 430 300, 505 380
-                 C 690 560, 1010 545, 1360 470"
-              stroke="#1a2ffb"
-              stroke-width="28"
+              d="M -80 430
+                 C 140 330, 320 320, 430 430
+                 C 540 540, 560 610, 510 720
+                 C 460 830, 380 950, 250 1020
+                 C 130 1085, 30 1015, 38 890
+                 C 46 770, 150 668, 340 645
+                 C 540 620, 700 650, 830 715
+                 C 980 805, 1070 950, 1225 935
+                 C 1345 922, 1395 835, 1485 830
+                 C 1555 826, 1584 865, 1594 955
+                 C 1602 1045, 1607 1100, 1612 1180"
+              stroke="url(#reel-swirl-grad)"
+              stroke-width="38"
               stroke-linecap="round"
               stroke-linejoin="round"
             />
@@ -209,19 +224,38 @@
             </a>
           </div>
 
-          <div id="reel-container">
-            <div id="reel-frame">
-              <div class="reel-deco reel-deco-top" aria-hidden="true">
-                <span class="cross"></span>
-                <span class="cross"></span>
-                <span class="cross"></span>
-                <span class="cross"></span>
-                <span class="cross"></span>
-              </div>
+          <!-- Zero-height anchor marking the video's START rect (the small
+               thumb beside the description) — measured by reel.ts, mirrors
+               the reference's #home-reel-thumb. -->
+          <div id="reel-thumb-wrapper" aria-hidden="true">
+            <div id="reel-thumb"></div>
+          </div>
 
+          <div id="reel-container">
+            <div id="reel-sizer" aria-hidden="true"></div>
+            <div class="reel-deco reel-deco-top" aria-hidden="true">
+              <span class="cross"></span>
+              <span class="cross"></span>
+              <span class="cross"></span>
+              <span class="cross"></span>
+              <span class="cross"></span>
+            </div>
+            <div class="reel-deco reel-deco-bottom" aria-hidden="true">
+              <span class="cross"></span>
+              <span class="cross"></span>
+              <span class="cross"></span>
+              <span class="cross"></span>
+              <span class="cross"></span>
+            </div>
+            <div id="reel-frame">
               <div id="reel-media">
                 <video id="reel-video" src="/reel/desktop.mp4" muted loop playsinline preload="metadata" hidden></video>
                 <div id="reel-placeholder" aria-hidden="true"></div>
+                <div id="reel-tint" aria-hidden="true"></div>
+              </div>
+
+              <div id="reel-overlay">
+                <span class="reel-overlay-word" aria-hidden="true">Play</span>
                 <button id="reel-watch" aria-label="Watch the showreel">
                   <span id="reel-watch-base" aria-hidden="true"></span>
                   <span id="reel-watch-fill" aria-hidden="true"></span>
@@ -229,14 +263,7 @@
                     <path d="M8 5.5v13l11-6.5-11-6.5Z" />
                   </svg>
                 </button>
-              </div>
-
-              <div class="reel-deco reel-deco-bottom" aria-hidden="true">
-                <span class="cross"></span>
-                <span class="cross"></span>
-                <span class="cross"></span>
-                <span class="cross"></span>
-                <span class="cross"></span>
+                <span class="reel-overlay-word" aria-hidden="true">Reel</span>
               </div>
             </div>
           </div>
@@ -255,10 +282,9 @@
               <div class="project-item-main">
                 <div class="project-item-media" style="background-image: url('/featured/p1.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
                 <video class="project-item-video" data-src="/featured/p1.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
-                <span class="project-item-toggle">Website</span>
               </div>
               <div class="project-item-footer">
-                <div class="project-item-line-1">Brand Experience · 2024</div>
+                <div class="project-item-line-1">Concept • Web • Design • 3D</div>
                 <div class="project-item-line-2">
                   <span class="project-item-line-2-inner">
                     <span class="project-item-line-2-icon" aria-hidden="true">
@@ -276,10 +302,9 @@
               <div class="project-item-main">
                 <div class="project-item-media" style="background-image: url('/featured/p2.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
                 <video class="project-item-video" data-src="/featured/p2.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
-                <span class="project-item-toggle">Immersive</span>
               </div>
               <div class="project-item-footer">
-                <div class="project-item-line-1">Immersive Site · 2024</div>
+                <div class="project-item-line-1">Web • Design • Development • Immersive</div>
                 <div class="project-item-line-2">
                   <span class="project-item-line-2-inner">
                     <span class="project-item-line-2-icon" aria-hidden="true">
@@ -297,10 +322,9 @@
               <div class="project-item-main">
                 <div class="project-item-media" style="background-image: url('/featured/p3.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
                 <video class="project-item-video" data-src="/featured/p3.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
-                <span class="project-item-toggle">3D / WebGL</span>
               </div>
               <div class="project-item-footer">
-                <div class="project-item-line-1">3D Configurator · 2023</div>
+                <div class="project-item-line-1">3D • WebGL • Development</div>
                 <div class="project-item-line-2">
                   <span class="project-item-line-2-inner">
                     <span class="project-item-line-2-icon" aria-hidden="true">
@@ -318,10 +342,9 @@
               <div class="project-item-main">
                 <div class="project-item-media" style="background-image: url('/featured/p4.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
                 <video class="project-item-video" data-src="/featured/p4.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
-                <span class="project-item-toggle">Website</span>
               </div>
               <div class="project-item-footer">
-                <div class="project-item-line-1">Product Launch · 2023</div>
+                <div class="project-item-line-1">Web • Design • Motion</div>
                 <div class="project-item-line-2">
                   <span class="project-item-line-2-inner">
                     <span class="project-item-line-2-icon" aria-hidden="true">
@@ -339,10 +362,9 @@
               <div class="project-item-main">
                 <div class="project-item-media" style="background-image: url('/featured/p5.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
                 <video class="project-item-video" data-src="/featured/p5.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
-                <span class="project-item-toggle">Film / 3D</span>
               </div>
               <div class="project-item-footer">
-                <div class="project-item-line-1">Interactive Film · 2023</div>
+                <div class="project-item-line-1">Film • 3D • Animation</div>
                 <div class="project-item-line-2">
                   <span class="project-item-line-2-inner">
                     <span class="project-item-line-2-icon" aria-hidden="true">
@@ -360,10 +382,9 @@
               <div class="project-item-main">
                 <div class="project-item-media" style="background-image: url('/featured/p6.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
                 <video class="project-item-video" data-src="/featured/p6.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
-                <span class="project-item-toggle">Website</span>
               </div>
               <div class="project-item-footer">
-                <div class="project-item-line-1">Digital Flagship · 2022</div>
+                <div class="project-item-line-1">Web • Development • Brand</div>
                 <div class="project-item-line-2">
                   <span class="project-item-line-2-inner">
                     <span class="project-item-line-2-icon" aria-hidden="true">
@@ -380,7 +401,7 @@
 
           <a id="featured-cta" class="cta-pill" href="#featured">
             <span class="cta-pill__dot" aria-hidden="true"></span>
-            <span class="cta-pill__text">All projects</span>
+            <span class="cta-pill__text">See all projects</span>
             <span class="cta-pill__arrow" aria-hidden="true">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
@@ -390,6 +411,46 @@
         </section>
 
         <section id="goal" class="section" aria-labelledby="goal-title">
+          <!-- Second continuous ribbon: enters at the RIGHT edge above the title,
+               sweeps left under the centered CTA, dives down the left side, curls
+               under the title, S-bends up over it, then descends past the texts
+               and waves out the right edge. Drawn in head-first by scroll
+               (goal.ts), always behind the DOM content (reference behavior). -->
+          <svg
+            id="goal-ribbon"
+            viewBox="0 0 1600 1700"
+            fill="none"
+            preserveAspectRatio="xMidYMin slice"
+            aria-hidden="true"
+          >
+            <defs>
+              <linearGradient id="goal-ribbon-grad" x1="60%" y1="0%" x2="40%" y2="100%">
+                <stop offset="0%" stop-color="#2fb0e8" />
+                <stop offset="55%" stop-color="#3cd9e2" />
+                <stop offset="100%" stop-color="#41ecd5" />
+              </linearGradient>
+            </defs>
+            <path
+              id="goal-ribbon-path"
+              d="M 1660 110
+                 C 1400 40, 1120 30, 860 150
+                 C 640 250, 430 350, 370 540
+                 C 320 720, 350 880, 500 960
+                 C 650 1040, 830 1030, 940 950
+                 C 1040 875, 1065 760, 1055 645
+                 C 1045 500, 1065 345, 1185 260
+                 C 1290 185, 1425 200, 1442 340
+                 C 1452 470, 1330 565, 1235 665
+                 C 1125 780, 1042 890, 1038 1030
+                 C 1035 1165, 1065 1285, 1165 1345
+                 C 1280 1412, 1430 1385, 1520 1325
+                 C 1575 1288, 1620 1295, 1660 1315"
+              stroke="url(#goal-ribbon-grad)"
+              stroke-width="33"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
           <div id="goal-context">
             <div id="goal-context-inner">
               <h2 id="goal-title">

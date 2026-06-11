@@ -12,7 +12,7 @@ Fidelity to the real site's layout, motion, scroll, hover and click behavior
 is the whole point. All copy, project names, and media are ORIGINAL
 placeholders — never ship lusion's text, client list, or assets.
 
-## Current state (2026-06-10)
+## Current state (2026-06-11)
 
 ALL page sections are built and browser-verified: preloader → hero (physics
 jacks) → showreel (video plays) → featured (6 tiles, real posters,
@@ -20,6 +20,13 @@ hover-to-play) → goal (manifesto + photo frames) → tunnel (400vh scroll zone
 page goes black, gem scene + title scrub) → end (two-line CTA + confetti
 field) → footer → scroll-nav. Video overlay plays from the reel watch button.
 `npm run build` is green.
+
+The showreel was rebuilt (2026-06-11) from a live frame-by-frame study of
+lusion.co: one continuous ribbon draws across the whole section (left edge →
+behind title → loop around the thumb → out the right edge), and the video
+morphs from a 5-column blue-duotone thumb to the full-width 1728:680 frame
+with a "PLAY ▶ REEL" overlay and a ~1-viewport pinned hold. Details + gotchas
+in `../HANDOFF.md` §5 ("The video morph").
 
 The big remaining milestone: full scene-morph choreography through the tunnel
 zone + a persistent single canvas (see roadmap in `../HANDOFF.md` §7).

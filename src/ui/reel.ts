@@ -1,15 +1,16 @@
 import gsap from 'gsap';
-import './scroll';
+import { ScrollTrigger } from './scroll';
 import { splitWords } from './splitWords';
 
 /**
- * Showreel scroll choreography:
+ * Showreel scroll choreography (matched frame-by-frame against the reference):
  *  - masked line reveal for the two title lines
  *  - description + CTA ease in
- *  - the video frame starts as a small left-column "thumb" and expands to
- *    full width while pinned (the reference's signature morph), scrubbed
- *    by scroll
- *  - subtle hero parallax as it scrolls away
+ *  - one continuous ribbon draws itself across the whole section
+ *  - the video morphs from a 5-column 16:9 thumb (blue duotone, beside the
+ *    description) to the full-width 1728:680 frame, then holds pinned for
+ *    ~a viewport while the reel plays before releasing
+ *  - "Play [pill] Reel" overlay + corner crosses appear near full expansion
  */
 export function setupReelSection(): void {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -67,7 +68,9 @@ export function setupReelSection(): void {
     },
   });
 
-  // --- blue swirl draws itself in with scroll --------------------------------
+  // --- the ribbon draws itself in across the section -------------------------
+  // It spans from beside the title, loops around the video thumb, and waves
+  // out the right edge — fully drawn by the time the video finishes expanding.
   const swirl = document.getElementById('reel-swirl-path') as SVGPathElement | null;
   if (swirl) {
     const length = swirl.getTotalLength();
@@ -78,70 +81,104 @@ export function setupReelSection(): void {
       scrollTrigger: {
         trigger: '#reel',
         start: 'top 75%',
-        end: 'top -35%',
+        end: '+=170%',
         scrub: 0.5,
+        invalidateOnRefresh: true,
       },
     });
   }
 
-  // --- inner video parallax while the section scrolls ------------------------
-  gsap.fromTo(
-    ['#reel-video', '#reel-placeholder'],
-    { yPercent: -6, scale: 1.13 },
-    {
-      yPercent: 6,
-      scale: 1.13,
-      ease: 'none',
-      scrollTrigger: {
-        trigger: '#reel-container',
-        start: 'top bottom',
-        end: 'bottom top',
-        scrub: true,
-      },
-    },
-  );
+  // --- thumb -> fullwidth morph (reference: rect-to-rect lerp) ---------------
+  const container = document.getElementById('reel-container');
+  const frame = document.getElementById('reel-frame');
+  const thumb = document.getElementById('reel-thumb');
+  const sizer = document.getElementById('reel-sizer');
+  if (!container || !frame || !thumb || !sizer) return;
 
-  // --- thumb -> fullwidth expansion (pinned, scrubbed) -----------------------
-  // Start state: ~45% width (5 of 12 columns), pulled up beside the content
-  // column; end state: identity (full width in flow).
-  const startScale = 0.45;
+  // Start/end rects are cached on every ScrollTrigger refresh (with pins
+  // reverted) and the morph lerps between them — gsap's recorded fromTo
+  // values would go stale when fonts/pin-spacers settle layout after boot.
+  interface MorphRect {
+    top: number;
+    width: number;
+    height: number;
+  }
+  let fromRect: MorphRect = { top: 0, width: 0, height: 0 };
+  let toRect: MorphRect = { top: 0, width: 0, height: 0 };
+  const measureRects = (): void => {
+    const c = container.getBoundingClientRect();
+    const t = thumb.getBoundingClientRect();
+    const s = sizer.getBoundingClientRect();
+    fromRect = { top: t.top - c.top, width: t.width, height: t.width * (9 / 16) };
+    toRect = { top: s.top - c.top, width: s.width, height: s.width * (680 / 1728) };
+  };
+  measureRects();
 
-  gsap.fromTo(
-    '#reel-frame',
-    {
-      scale: startScale,
-      y: () => -Math.min(window.innerHeight * 0.22, 260),
-      transformOrigin: '0% 0%',
-    },
-    {
-      scale: 1,
-      y: 0,
-      ease: 'none',
-      scrollTrigger: {
-        trigger: '#reel-container',
-        start: 'top 70%',
-        end: '+=85%',
-        scrub: 0.4,
-        pin: true,
-        pinSpacing: true,
-        invalidateOnRefresh: true,
-      },
-    },
-  );
+  gsap.set(frame, { transformPerspective: 1400, transformOrigin: '50% 50%' });
 
-  // decorative crosses appear once the frame is (mostly) expanded
-  gsap.from('.reel-deco .cross', {
-    opacity: 0,
-    scale: 0,
-    transformOrigin: '50% 50%',
-    stagger: 0.05,
-    duration: 0.5,
-    ease: 'power2.out',
+  const morph = { p: 0 };
+  const lerp = (a: number, b: number): number => a + (b - a) * morph.p;
+  const applyMorph = (): void => {
+    gsap.set(frame, {
+      top: lerp(fromRect.top, toRect.top),
+      width: lerp(fromRect.width, toRect.width),
+      height: lerp(fromRect.height, toRect.height),
+      // soft cloth-like flex while in motion (the reference's plane bend);
+      // flat at rest on both ends
+      rotationX: Math.sin(morph.p * Math.PI) * -2.4,
+    });
+  };
+
+  ScrollTrigger.addEventListener('refreshInit', measureRects);
+  ScrollTrigger.addEventListener('refresh', applyMorph);
+
+  const overlayWords = gsap.utils.toArray<HTMLElement>('.reel-overlay-word');
+  gsap.set(overlayWords, { opacity: 0, yPercent: 30 });
+  gsap.set('#reel-watch', { opacity: 0, scale: 0.6 });
+  gsap.set('.reel-deco .cross', { opacity: 0, scale: 0, transformOrigin: '50% 50%' });
+
+  // The tile stays small while the description is read (reference behavior);
+  // growth happens between the container reaching mid-viewport and the pin.
+  const expand = gsap.timeline({
+    defaults: { ease: 'none' },
     scrollTrigger: {
-      trigger: '#reel-container',
-      start: 'top 25%',
-      once: true,
+      trigger: container,
+      start: 'top 52%',
+      end: 'top 12%',
+      scrub: 0.5,
     },
+  });
+
+  expand
+    .to(morph, { p: 1, duration: 1, onUpdate: applyMorph }, 0)
+    // blue duotone fades out as the frame grows
+    .to('#reel-tint', { opacity: 0, duration: 0.55 }, 0.25)
+    .to(
+      ['#reel-video', '#reel-placeholder'],
+      { filter: 'grayscale(0) brightness(1) contrast(1)', duration: 0.55 },
+      0.25,
+    )
+    // the ghost "Play / Reel" words are already fading in behind the small
+    // tile (reference shows them at ~half opacity before expansion begins)
+    .to(overlayWords, { opacity: 1, yPercent: 0, duration: 0.5, stagger: 0.06 }, 0.02)
+    .to('#reel-watch', { opacity: 1, scale: 1, duration: 0.26, ease: 'power2.out' }, 0.72)
+    // all children must end within t=1 or the scrub range skews early
+    .to(
+      '.reel-deco .cross',
+      { opacity: 1, scale: 1, duration: 0.14, stagger: 0.02, ease: 'power2.out' },
+      0.78,
+    );
+
+  applyMorph();
+
+  // --- pinned hold at full size (reference holds ~1 viewport) ----------------
+  ScrollTrigger.create({
+    trigger: container,
+    start: 'top 12%',
+    end: '+=90%',
+    pin: true,
+    pinSpacing: true,
+    invalidateOnRefresh: true,
   });
 
   // --- hero drifts up slightly as the reel takes over ------------------------

@@ -15,12 +15,16 @@ fallback). Boot was hardened: always starts at top, ScrollTrigger re-measured po
 preloader can never strand the black screen. Earlier sessions: header, hero, showreel,
 featured projects, end/CTA.
 
-> **Live-site comparison blocker:** lusion.co takes **6+ minutes and never finished
-> loading** (stuck ~92%) inside the automated browser (Claude-in-Chrome / Playwright) — it
-> streams heavy WebGL assets and throttles. So I cannot auto-screenshot the real site for
-> comparison. Workaround that works: the **user pastes screenshots** from their own browser
-> (fast). The built-in Claude Preview panel only renders at ~739px (mobile) — use the Chrome
-> MCP at a resized 1440px window for desktop views of our localhost.
+> **Live-site comparison blocker (PARTIALLY LIFTED 2026-06-11):** lusion.co DID fully load
+> in Claude-in-Chrome — it just takes **~5 minutes** of patient waiting (preloader creeps
+> ~10-13%/min, then completes). Budget the wait, keep the tab foregrounded, then scroll
+> and screenshot freely; a full hero→reel frame-by-frame study worked this way. Playwright
+> remains unverified. Fallback: the **user pastes screenshots**. The built-in Claude
+> Preview panel only renders at ~739px (mobile) — use the Chrome MCP for desktop views of
+> our localhost. NOTE: our preloader also sits visibly at "100" for ~10-15s in an
+> automated tab (rAF throttling) — wait for `html.is-ready` before driving `__lenis`, or
+> boot's forced scroll-to-top will undo your park and the intro-hidden elements read as a
+> blank page.
 
 > **Hero scene look (deferred by user):** at desktop our hero renders dark/sparse — shapes
 > pile small + dim at the bottom of the dark box. Enriched the palette to 6 colours
@@ -82,8 +86,11 @@ Both were removed so the baseline matches the real home page:
 2. **Velocity-driven video skew ("camera shake" when scrolling).** ✅ removed
    - Deleted the `--- 3D warp driven by scroll velocity ---` block in `reel.ts`.
    - If a video transform is ever wanted, drive it by scroll **progress** (scrub),
-     never velocity. The home-reel video does **not** skew on the real site; the
-     trapezoid look was just the perspective of the thumb→fullwidth expansion.
+     never velocity. *(2026-06-11 correction: live-site frame study confirmed the
+     real video plane DOES bend cloth-like during the thumb→fullwidth expansion —
+     progress-driven, flat at rest on both ends. reel.ts now approximates it with
+     a subtle sine-shaped rotationX (≤2.4°) across the morph. Velocity shake
+     stays banned.)*
 
 **Keep:** the site-wide cursor **mist trail** (`src/ui/trailCursor.ts`) — on the real
 site and explicitly requested.
@@ -191,11 +198,31 @@ crosses at 0 / 33.3% / 66.6% / 100% and centered "scroll to explore".
   `border-radius: 22.5em`; hover fills blue from the bottom, icon turns white.
 - Video frame has decorative crosses top & bottom at 0/25/50/75/100%.
 
-**The blue swirl line:** a brand-blue stroke that **enters from the left edge**, loops in
-the upper-left around the video, and the tail exits the **right edge**; it **draws itself
-in on scroll**. In our build it's an inline SVG path (`#reel-swirl-path`, 1600×1200 space)
-animated via `stroke-dashoffset` scrub. The curve is a hand-authored approximation — tune
-the path coords to taste. On the real site this line is rendered in their WebGL engine.
+**The blue swirl line (rebuilt 2026-06-11 from a live frame-by-frame study):** ONE
+continuous ribbon spanning the whole section — enters the **left edge** beside the title,
+sweeps down behind it, **loops fully around the video thumb**, then S-waves out the
+**right edge** hugging it downward. Drawn via `stroke-dashoffset` scrub over ~1.7
+viewports (`#reel` top 75% → +=170%). Inline SVG (`#reel-swirl-path`, 1600×1500 space,
+38-unit stroke, subtle gradient). It sits BELOW the video frame (z 0 vs 1), so the
+expanded video covers most of it — only the loop above the frame and the right-edge wave
+stay visible, exactly like the reference. On the real site it's a WebGL tube.
+
+**The video morph (rebuilt 2026-06-11, mirrors the real DOM architecture):** the real
+site keeps two zero-cost DOM anchors — `#home-reel-thumb` (grid-column 1/span 5, 16:9,
+pulled up beside the description) and `#home-reel-video-container` (full content width,
+**1728:680**) — and lerps the WebGL plane between those rects on scroll, with a
+~1-viewport pinned hold at full size. Ours mirrors it in DOM: `#reel-thumb` (anchor) →
+`#reel-frame` absolutely positioned in `#reel-container` (sized by `#reel-sizer`,
+padding-top on the container — a child margin would collapse out). reel.ts lerps
+top/width/height between rects via a progress proxy whose rects are re-measured on
+`refreshInit` (gsap's recorded fromTo values go stale when fonts settle after boot —
+that bug cost an hour, don't reintroduce it). Scrub: container top 52% → 12%, then
+`pin: true` hold for +=90%. While small the tile is **blue duotone** (greyscale +
+brightness/contrast filter under a `screen`-blend blue `#reel-tint` with a `multiply`
+lavender ::after); the tint scrubs away mid-expansion. Giant white "PLAY ▶ REEL"
+(`#reel-overlay`, 9vw words flanking the watch pill) + corner crosses land near full
+size. Crosses live on the CONTAINER (anchored to the final rect) — inside the frame
+they'd be clipped by its overflow:hidden.
 
 ---
 
@@ -213,8 +240,32 @@ The real home page DOM (verified, see `reference/structure.txt`), in order:
    `<a class="project-item project-type-website">` rows, 2-col, `:nth-child(n+3)` big
    top-margin, `.project-item-main` 65% ratio box, hover-video, `.project-item-line-1`
    (category) + `.project-item-line-2` (name, 3vw masked) + arrow icon, `#home-featured-cta`
-   flood pill. Ours uses 6 original placeholder projects + gradient placeholders.
-4. **Goal / Philosophy** — `#home-goal` ✅ built (our `#goal`, content layer only). Big title (8vw), paragraph block
+   flood pill. Ours uses 6 original placeholder projects.
+   **Live re-study 2026-06-11 (fidelity pass applied):** the type pill
+   (`.project-item-toggle`) NO LONGER EXISTS on the real site — removed from ours. Tiles
+   have NO clip-wipe reveal (they enter fully rendered; their WebGL planes just bend
+   subtly while scrolling, settling flat — ours approximates with a clamped
+   velocity-driven skewY ≤1.2° in featured.ts). Hover (corrected after a pointer study,
+   user-confirmed): a slight BLUR PULSE in/out, then cursor movement pans the artwork
+   like a small camera-POV move — NO video swap, NO zoom. Ours: media over-scaled 1.12,
+   quickTo x/y pans ±3% of tile size opposite the cursor; videos stay dormant (only the
+   detail overlay uses them). The hovered item slides the arrow+name 1em right (real
+   site transforms the icon; ours slides the inner — same visual). Category lines are bullet-separated discipline lists
+   (`CONCEPT • WEB • …`). line-1 margin `1.5em 0 1em`; section padding-y = base (50px);
+   CTA margin-top ≈5.6vw. Reel correction from the same study: the ghost "PLAY REEL"
+   words fade in EARLY (before expansion), only the pill lands late.
+4. **Goal / Philosophy** — `#home-goal` ✅ built (our `#goal`, content layer only).
+   **Cyan ribbon added (2026-06-11, from a live frame-by-frame study):** a second
+   continuous ribbon (`#goal-ribbon`, inline SVG 1600×1700, gradient `#2fb0e8→#41ecd5`,
+   stroke 33, round caps) enters at the RIGHT edge above the title, sweeps left under
+   the centered featured CTA, dives down the left side, curls under the title, S-bends
+   up over it, descends right of the texts and waves out the right edge. Drawn
+   head-first via stroke-dashoffset scrub in goal.ts (`trigger #goal, top 92%,
+   +=140%, scrub 0.5`), z-below ALL section content (title/texts render over it).
+   Featured CTA was also corrected: centered (`justify-self: center`), label
+   "See all projects", reveal now settles from a slight -5° rotation — all matching
+   the live reference. Verified: 0% before entry, tip at right edge on section
+   approach, ~53% at mid-title, 100% by the texts zone. Big title (8vw), paragraph block
    (`grid-column 8/12`), two stacked image reveals (`#home-goal-image-in/out`), AND a
    `#home-goal-tunnel-title`. **Has `padding-bottom: calc(var(--vh)*4200)`** — i.e. a
    ~42-screen scroll zone that drives the WebGL **tunnel / scene morph**. The content

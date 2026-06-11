@@ -4,13 +4,15 @@
   z-index: 1;
 }
 
-/* big blue swirl that draws itself in as you scroll — behind all content */
+/* big blue ribbon that draws itself in as you scroll — behind all content,
+   below the video frame (the expanded video covers most of it, leaving the
+   loop above the frame and the right-edge wave visible, like the reference) */
 #reel-swirl {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  aspect-ratio: 1600 / 1200;
+  aspect-ratio: 1600 / 1500;
   height: auto;
   z-index: 0;
   pointer-events: none;
@@ -18,10 +20,15 @@
 }
 
 #reel-title,
-#reel-content,
 #reel-container {
   position: relative;
   z-index: 1;
+}
+
+/* description + CTA stay above the expanding video (reference behavior) */
+#reel-content {
+  position: relative;
+  z-index: 2;
 }
 
 /* --- title -------------------------------------------------------------- */
@@ -158,28 +165,67 @@
 }
 
 /* --- video -------------------------------------------------------------- */
+/* Zero-height anchor marking the START rect of the video morph: 5 columns
+   wide, 16:9, pulled up one title-em so it sits beside the description
+   (mirrors the reference's #home-reel-thumb-wrapper / #home-reel-thumb). */
+#reel-thumb-wrapper {
+  position: relative;
+  grid-column: 1 / span 5;
+  height: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+#reel-thumb {
+  position: absolute;
+  left: 0;
+  top: -12vw;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 start tile */
+}
+
 #reel-container {
   grid-column: 1 / -1;
-  /* scroll room for the pinned expansion lives in ScrollTrigger's pin spacer */
+  /* padding (not a child margin, which would collapse out) creates the gap
+     above the final video rect; scroll room for the pinned hold lives in
+     ScrollTrigger's pin spacer */
+  padding-top: 2.75vw;
   margin-bottom: 10vh;
 }
 
-#reel-frame {
-  position: relative;
+/* invisible block that gives the container its final-size height
+   (final video rect = full content width at 1728:680) */
+#reel-sizer {
   width: 100%;
-  will-change: transform;
-  transform-origin: 0% 0%;
+  aspect-ratio: 1728 / 680;
+  pointer-events: none;
 }
 
+/* the morphing box: CSS rest state = final expanded rect; reel.ts scrubs it
+   from the thumb rect (top/width/height) as you scroll */
+#reel-frame {
+  position: absolute;
+  inset: 2.75vw 0 0 0;
+  border-radius: var(--global-border-radius);
+  overflow: hidden;
+  background:
+    radial-gradient(120% 160% at 18% 0%, #262a3a 0%, transparent 55%),
+    radial-gradient(130% 140% at 85% 100%, #11163a 0%, transparent 60%),
+    linear-gradient(160deg, #0d0e13 10%, #1a1d29 50%, #0d0e13 90%);
+}
+
+/* crosses live on the container (anchored to the FINAL video rect, like the
+   reference's decoration layer) so the morphing frame can't clip them */
 .reel-deco {
   position: absolute;
   left: 0;
   width: 100%;
   height: var(--cross-size);
+  pointer-events: none;
 }
 
 .reel-deco-top {
-  top: calc(-2 * var(--cross-size));
+  top: calc(2.75vw - 2 * var(--cross-size));
 }
 
 .reel-deco-bottom {
@@ -207,15 +253,8 @@
 }
 
 #reel-media {
-  position: relative;
-  width: 100%;
-  padding-top: 56.25%; /* 16:9 */
-  border-radius: 12px;
-  overflow: hidden;
-  background:
-    radial-gradient(120% 160% at 18% 0%, #262a3a 0%, transparent 55%),
-    radial-gradient(130% 140% at 85% 100%, #11163a 0%, transparent 60%),
-    linear-gradient(160deg, #0d0e13 10%, #1a1d29 50%, #0d0e13 90%);
+  position: absolute;
+  inset: 0;
 }
 
 #reel-video {
@@ -224,12 +263,33 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 12px;
-  will-change: transform;
+  /* blue duotone while in thumb state; reel.ts scrubs it away on expansion
+     (darker, contrastier source = richer blues under the screen tint) */
+  filter: grayscale(1) brightness(0.78) contrast(1.15);
 }
 
 #reel-video[hidden] {
   display: none;
+}
+
+/* blue layer over greyscaled media = the reference's duotone thumb tint
+   (screen keeps highlights light while darks go brand blue) */
+#reel-tint {
+  position: absolute;
+  inset: 0;
+  background: var(--color-blue);
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+/* pulls highlights down to pale lavender so the duotone ramp reads
+   blue -> lavender like the reference, not blue -> white */
+#reel-tint::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #cfc8ff;
+  mix-blend-mode: multiply;
 }
 
 /* animated placeholder shimmer while no video file is present */
@@ -246,6 +306,7 @@
   );
   background-size: 280% 280%;
   animation: reel-sheen 7s linear infinite;
+  filter: grayscale(1) brightness(0.78) contrast(1.15);
 }
 
 @keyframes reel-sheen {
@@ -257,11 +318,31 @@
   }
 }
 
-/* --- centered watch pill ------------------------------------------------- */
-#reel-watch {
+/* --- centered "Play [pill] Reel" overlay ---------------------------------- */
+#reel-overlay {
   position: absolute;
-  left: calc(50% - 4.7em);
-  top: calc(50% - 3em);
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3vw;
+  pointer-events: none;
+}
+
+.reel-overlay-word {
+  font-size: 9vw;
+  line-height: 1;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  color: var(--color-white);
+  user-select: none;
+}
+
+#reel-watch {
+  position: relative;
+  flex: none;
   width: 9.4em;
   height: 6em;
   display: flex;
@@ -270,6 +351,7 @@
   border-radius: 22.5em;
   overflow: hidden;
   cursor: pointer;
+  pointer-events: auto;
 }
 
 #reel-watch-base {
@@ -327,15 +409,39 @@
   #reel-content {
     grid-column: 1 / -1;
   }
+
+  /* 1 / -1 spans the grid at any column count; the thumb starts lower since
+     the description no longer sits beside it */
+  #reel-thumb-wrapper {
+    grid-column: 1 / span 4;
+  }
+
+  #reel-thumb {
+    top: -6vw;
+  }
+
+  .reel-overlay-word {
+    font-size: 11vw;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   #reel-placeholder {
     animation: none;
+    filter: none;
   }
 
   #reel-swirl-path {
     stroke-dasharray: none !important;
     stroke-dashoffset: 0 !important;
+  }
+
+  /* no morph: the frame rests at its final rect, full colour, overlay shown */
+  #reel-video {
+    filter: none;
+  }
+
+  #reel-tint {
+    display: none;
   }
 }

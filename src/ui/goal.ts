@@ -29,6 +29,31 @@ export function setupGoalSection(): void {
   setupTitleReveal();
   setupTextsReveal();
   setupImageFrames();
+  setupRibbonDraw();
+}
+
+/**
+ * The cyan ribbon draws itself in head-first from the right edge, scrubbed
+ * by scroll across the title + texts zone (~1.4 viewports), exactly like the
+ * reel's blue ribbon but mirrored. Reduced motion never reaches here (the
+ * fully-drawn rest state simply shows).
+ */
+function setupRibbonDraw(): void {
+  const ribbon = document.getElementById('goal-ribbon-path') as SVGPathElement | null;
+  if (!ribbon) return;
+
+  const length = ribbon.getTotalLength();
+  gsap.set(ribbon, { strokeDasharray: length, strokeDashoffset: length });
+  gsap.to(ribbon, {
+    strokeDashoffset: 0,
+    ease: 'none',
+    scrollTrigger: {
+      trigger: '#goal',
+      start: 'top 92%',
+      end: '+=140%',
+      scrub: 0.5,
+    },
+  });
 }
 
 /** Masked line reveal for the three title lines. */

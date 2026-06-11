@@ -13,9 +13,24 @@
   padding-bottom: calc(var(--vh, 1vh) * 10);
 }
 
+/* cyan ribbon that draws itself in from the RIGHT edge as you scroll —
+   always behind the section's DOM content, like the reference's WebGL tube */
+#goal-ribbon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  aspect-ratio: 1600 / 1700;
+  height: auto;
+  z-index: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
 /* --- context wrapper + inner 12-col grid --------------------------------- */
 #goal-context {
   position: relative;
+  z-index: 1;
   grid-column: 1 / span 12;
 }
 

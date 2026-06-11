@@ -4,8 +4,10 @@
   position: relative;
   z-index: 1;
   font-size: clamp(0.875rem, 1vw, 2rem);
-  padding-top: clamp(6rem, 12vw, 16rem);
-  padding-bottom: clamp(4rem, 8vw, 12rem);
+  /* reference: the section itself only carries base padding; the title's
+     own .5em padding-top supplies the rest of the gap */
+  padding-top: var(--base-padding-y);
+  padding-bottom: var(--base-padding-y);
 }
 
 /* --- section head ------------------------------------------------------- */
@@ -82,7 +84,9 @@
   background: var(--color-ink);
 }
 
-/* placeholder artwork: a soft accent-tinted gradient field with a slow drift */
+/* placeholder artwork: a soft accent-tinted gradient field with a slow drift.
+   No zoom — the reference hover is a blur crossfade into the hover video
+   (filter is gsap-driven in featured.ts). */
 .project-item-media {
   position: absolute;
   inset: 0;
@@ -90,8 +94,6 @@
     radial-gradient(120% 140% at 20% 0%, var(--accent, #2b3afb) 0%, transparent 55%),
     radial-gradient(140% 150% at 90% 100%, #11163a 0%, transparent 60%),
     linear-gradient(160deg, #0d0e13 10%, #1a1d29 52%, #0d0e13 92%);
-  transform: scale(1.04);
-  transition: transform 0.7s cubic-bezier(0.35, 0, 0, 1);
 }
 
 .project-item-media::after {
@@ -133,27 +135,7 @@
   }
 }
 
-.project-item:hover .project-item-media {
-  transform: scale(1);
-}
-
-/* type label pill, bottom-right of the artwork */
-.project-item-toggle {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  height: 2em;
-  padding: 0 0.9em;
-  display: inline-flex;
-  align-items: center;
-  border-radius: 1em;
-  background-color: var(--color-off-white);
-  color: var(--color-black);
-  font-size: 0.8em;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
+/* (no hover zoom and no type pill — neither exists on the reference) */
 
 /* --- project footer (category + name) ----------------------------------- */
 .project-item-footer {
@@ -162,7 +144,7 @@
 }
 
 .project-item-line-1 {
-  margin: 1.5em 0 0.7em;
+  margin: 1.5em 0 1em; /* reference: 1.5em above, 1em below (own em) */
   font-size: 0.9vw;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -218,8 +200,10 @@
 /* --- "see all" CTA ------------------------------------------------------ */
 #featured-cta {
   grid-column: 1 / -1;
-  justify-self: start;
-  margin-top: clamp(5rem, 12vw, 14rem);
+  /* the reference pill sits centered between the grid and the goal section */
+  justify-self: center;
+  /* reference computed: ~108px at 1920 (5.6vw) */
+  margin-top: clamp(3rem, 5.6vw, 7rem);
   font-size: clamp(0.875rem, 1vw, 1.75rem);
   height: 3.375em;
 }
