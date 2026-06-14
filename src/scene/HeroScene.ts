@@ -54,14 +54,16 @@ const REPEL_FALLOFF = 1.3;
 const CLICK_BURST_RADIUS = 8;
 const CLICK_BURST_STRENGTH = 10;
 
-// Exactly four colours, weighted like the reference: matte white ~30%, royal
-// blue ~30%, black ~25%, charcoal grey ~15%. Matte (no clearcoat) — the real
-// jacks read as soft-touch plastic, not wet candy.
+// Exactly four colours, weighted like the reference: clean white ~30%, royal
+// cobalt ~30%, black ~25%, muted grey ~15%. Smooth satin plastic (no clearcoat):
+// roughness is low enough that the strong white key collapses into a soft
+// highlight instead of washing the surface — that's why the real blue reads deep
+// and saturated and the black stays velvety, with a gentle sheen (not wet candy).
 const GROUPS: ColorGroup[] = [
-  { color: 0xedeff3, roughness: 0.5, count: 6 }, // matte white
-  { color: 0x1730c8, roughness: 0.45, count: 6 }, // royal cobalt blue (deep + cyan-leaning so ACES doesn't wash it to periwinkle/violet)
-  { color: 0x0c0c0f, roughness: 0.72, count: 5 }, // velvety matte black
-  { color: 0x363b48, roughness: 0.58, count: 3 }, // charcoal grey
+  { color: 0xedeff3, roughness: 0.45, count: 6 }, // clean white
+  { color: 0x1220b8, roughness: 0.32, count: 6 }, // deep royal cobalt blue (satin)
+  { color: 0x08080b, roughness: 0.46, count: 5 }, // velvety near-black (satin)
+  { color: 0x2b2f3a, roughness: 0.5, count: 3 }, // muted dark grey
 ];
 
 const tmpMatrix = new THREE.Matrix4();

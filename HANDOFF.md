@@ -26,12 +26,30 @@ featured projects, end/CTA.
 > boot's forced scroll-to-top will undo your park and the intro-hidden elements read as a
 > blank page.
 
-> **Hero scene look (deferred by user):** at desktop our hero renders dark/sparse — shapes
-> pile small + dim at the bottom of the dark box. Enriched the palette to 6 colours
-> (black/white/blue/red/green/purple, ~70 shapes) but it still reads dark; the real fix is
-> likely lighting/exposure/framing and/or a lighter field (the real shapes are bright &
-> colourful, see the End-section reference). Needs a real hero screenshot to tune. User said
-> "skip hero for now."
+> **Hero scene look — tuned to lusion.co (2026-06-14, from live reference shots).**
+> The floating cluster of "jacks" (three crossed bored cylinders) now matches the real
+> site. Final knobs:
+> - Geometry (`jackGeometry.ts`): `ARM_HALF_LENGTH 2.1`, `ARM_RADIUS 0.74`,
+>   `BORE_RADIUS 0.30` (~40% of arm radius → small hole + thick wall, like the real
+>   pipe-fittings), `BORE_DEPTH 0.52`, `RIM_FILLET 0.16`, `RADIAL_SEGMENTS 48`. Bore
+>   values are visual-only; the capsule colliders use `ARM_*` — don't retune those
+>   without re-checking the cursor physics.
+> - Materials (`HeroScene.ts` `GROUPS`): `MeshPhysicalMaterial`, metalness 0, clearcoat
+>   0, envMapIntensity 1.0. White `0xedeff3` r0.45 (×6), blue `0x1220b8` r0.32 (×6),
+>   black `0x08080b` r0.46 (×5), grey `0x2b2f3a` r0.5 (×3).
+> - Render/lights (unchanged, reference-accurate): ACESFilmic, exposure 1.4,
+>   RoomEnvironment IBL @ environmentIntensity 1.0, 4 directional lights, bg `#09090b`.
+> - KEY INSIGHT: the deep saturated blue/black come from LOW roughness, not a dark base.
+>   Under the strong white key, low roughness collapses the light into a soft highlight
+>   so the true deep albedo shows; high roughness washes saturated colour to periwinkle.
+>   ACES also shoves red-heavy blues toward violet, so the blue base is kept low-red /
+>   slightly cyan.
+> - Verifying the canvas: the built-in preview reports `visibility:hidden` and times out.
+>   Use headless Chromium instead (`npm i --no-save playwright`, then a tiny script that
+>   navigates localhost:5173, waits ~9s, screenshots). NEVER load live lusion.co in an
+>   automated browser — ask the user for reference shots.
+> - `#project-details` is hidden unless `html.is-project-details-active` (projectDetail.css);
+>   without that rule its black `display:block` layer covers the hero on '/'.
 
 ---
 
