@@ -27,12 +27,12 @@ const MAX_SUBSTEPS = 3;
 
 // --- floating-cluster tuning ---------------------------------------------
 // Gravity is zero; every body is tethered to a home position by a
-// mass-normalised damped spring: a = K*(home - pos) - C*vel. Combined with
-// the body's own linear damping this sits at ~critical damping, so a
-// displaced jack glides home in roughly 2s with no overshoot.
-const SPRING_STIFFNESS = 6.0; // s^-2
-const SPRING_DAMPING = 3.2; // s^-1
-const LINEAR_DAMPING = 1.8;
+// mass-normalised damped spring: a = K*(home - pos) - C*vel. Stiff enough to
+// snap a knocked jack back home in ~0.6s, but under-damped (ζ≈0.6) so the
+// return overshoots a hair and stays lively rather than robotic.
+const SPRING_STIFFNESS = 12.0; // s^-2
+const SPRING_DAMPING = 4.2; // s^-1
+const LINEAR_DAMPING = 2.0;
 const ANGULAR_DAMPING = 1.0;
 /** Peak sinusoidal drift acceleration — keeps the idle cluster breathing. */
 const DRIFT_ACCEL = 1.4;
@@ -41,23 +41,34 @@ const DRIFT_TORQUE = 0.16;
 /** Initial tumble speed range (rad/s). */
 const MAX_TUMBLE = 0.45;
 
-const POINTER_RADIUS = 2.4;
+// Cursor interaction (XY screen plane). The cursor behaves like a moving
+// paddle: a jack it sweeps toward is knocked along the contact normal (the
+// "hit angle") with an impulse proportional to how fast the cursor is closing
+// on it — so shapes fly off in the travel direction like billiard balls, not
+// in a random radial spray. A small always-on radial push (HOLE_ACCEL) keeps a
+// clean hole so the centre can't be rested on even when the cursor is still.
+const REPEL_RADIUS = 6.5;
+const HIT_GAIN = 16; // velocity-driven directional knock
+const HOLE_ACCEL = 100; // persistent radial push (keeps the hole vs the stiffer spring)
+const REPEL_FALLOFF = 1.3;
 const CLICK_BURST_RADIUS = 8;
 const CLICK_BURST_STRENGTH = 10;
 
-// Exactly four colours, weighted like the reference:
-// white ~30%, blue ~30%, black ~25%, dark navy ~15%.
+// Exactly four colours, weighted like the reference: matte white ~30%, royal
+// blue ~30%, black ~25%, charcoal grey ~15%. Matte (no clearcoat) — the real
+// jacks read as soft-touch plastic, not wet candy.
 const GROUPS: ColorGroup[] = [
-  { color: 0xf2f3f6, roughness: 0.3, count: 6 }, // glossy off-white
-  { color: 0x1a2ffb, roughness: 0.28, count: 6 }, // vivid deep blue
-  { color: 0x0a0b10, roughness: 0.34, count: 5 }, // black
-  { color: 0x10142e, roughness: 0.34, count: 3 }, // very dark navy
+  { color: 0xedeff3, roughness: 0.5, count: 6 }, // matte white
+  { color: 0x1730c8, roughness: 0.45, count: 6 }, // royal cobalt blue (deep + cyan-leaning so ACES doesn't wash it to periwinkle/violet)
+  { color: 0x0c0c0f, roughness: 0.72, count: 5 }, // velvety matte black
+  { color: 0x363b48, roughness: 0.58, count: 3 }, // charcoal grey
 ];
 
 const tmpMatrix = new THREE.Matrix4();
 const tmpPos = new THREE.Vector3();
 const tmpQuat = new THREE.Quaternion();
 const tmpScale = new THREE.Vector3(1, 1, 1);
+const tmpVel = new THREE.Vector3();
 
 export class HeroScene {
   private readonly container: HTMLElement;
@@ -70,11 +81,11 @@ export class HeroScene {
   private world!: RAPIER.World;
   private jacks: JackInstance[] = [];
   private boundaryBodies: RAPIER.RigidBody[] = [];
-  private pointerBody!: RAPIER.RigidBody;
 
   private worldHeight = 16;
-  private pointerTarget = new THREE.Vector3(1000, 1000, 0);
-  private pointerCurrent = new THREE.Vector3(1000, 1000, 0);
+  private cursor = new THREE.Vector3(1000, 1000, 0);
+  private cursorPrev = new THREE.Vector3(1000, 1000, 0);
+  private cursorVel = new THREE.Vector3();
   private pointerActive = false;
   private accumulator = 0;
   private simTime = 0;
@@ -98,9 +109,9 @@ export class HeroScene {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.4;
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    const ink = new THREE.Color(0x0d0e13);
+    const ink = new THREE.Color(0x09090b);
     this.renderer.setClearColor(ink);
     this.scene.fog = new THREE.Fog(ink, 30, 70);
 
@@ -118,7 +129,6 @@ export class HeroScene {
     this.handleResize();
     this.buildBoundaries();
     this.spawnJacks();
-    this.createPointerBody();
     this.bindEvents();
 
     this.lastTime = performance.now();
@@ -148,7 +158,7 @@ export class HeroScene {
   private setupLights(): void {
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    this.scene.environmentIntensity = 0.85;
+    this.scene.environmentIntensity = 1.0;
     pmrem.dispose();
 
     const key = new THREE.DirectionalLight(0xffffff, 3.0);
@@ -206,15 +216,14 @@ export class HeroScene {
 
   private createJackMeshes(geometry: THREE.BufferGeometry): THREE.InstancedMesh[] {
     return GROUPS.map((group) => {
-      // injection-moulded plastic: high clearcoat over a moderate base
-      // roughness gives the sharp toy-like specular hits of the reference
+      // soft-touch matte plastic: no clearcoat, higher roughness — broad gentle
+      // highlights and a velvety black, like the real lusion jacks (not glossy)
       const material = new THREE.MeshPhysicalMaterial({
         color: group.color,
         roughness: group.roughness,
         metalness: 0,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.06,
-        envMapIntensity: 1.15,
+        clearcoat: 0,
+        envMapIntensity: 1.0,
       });
       const mesh = new THREE.InstancedMesh(geometry, material, group.count);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -364,14 +373,6 @@ export class HeroScene {
     }
   }
 
-  private createPointerBody(): void {
-    const body = this.world.createRigidBody(
-      RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(1000, 1000, 0),
-    );
-    this.world.createCollider(RAPIER.ColliderDesc.ball(POINTER_RADIUS), body);
-    this.pointerBody = body;
-  }
-
   // --- interaction -------------------------------------------------------
 
   private bindEvents(): void {
@@ -382,15 +383,15 @@ export class HeroScene {
     canvas.addEventListener(
       'pointermove',
       (event) => {
-        this.pointerTarget.copy(this.pointToWorld(event));
-        if (!this.pointerActive) {
-          this.pointerCurrent.copy(this.pointerTarget);
-          // setTranslation teleports WITHOUT generating artificial velocity —
-          // setNextKinematicTranslation here would hurl contacting jacks away.
-          this.pointerBody.setTranslation(
-            { x: this.pointerCurrent.x, y: this.pointerCurrent.y, z: 0 },
-            false,
-          );
+        const p = this.pointToWorld(event);
+        if (this.pointerActive) {
+          this.cursor.copy(p);
+        } else {
+          // entering the canvas: prime the history so the first frame doesn't
+          // read the jump-in as an enormous cursor velocity.
+          this.cursor.copy(p);
+          this.cursorPrev.copy(p);
+          this.cursorVel.set(0, 0, 0);
           this.pointerActive = true;
         }
       },
@@ -401,9 +402,6 @@ export class HeroScene {
       'pointerleave',
       () => {
         this.pointerActive = false;
-        this.pointerTarget.set(1000, 1000, 0);
-        this.pointerCurrent.set(1000, 1000, 0);
-        this.pointerBody.setTranslation({ x: 1000, y: 1000, z: 0 }, false);
       },
       { signal },
     );
@@ -474,7 +472,6 @@ export class HeroScene {
     let stepped = false;
     while (this.accumulator >= PHYSICS_STEP) {
       this.applyHomeForces();
-      this.stepPointer();
       this.world.timestep = PHYSICS_STEP;
       this.world.step();
       this.accumulator -= PHYSICS_STEP;
@@ -499,6 +496,14 @@ export class HeroScene {
    */
   private applyHomeForces(): void {
     const t = this.simTime;
+    const repel = this.pointerActive && !this.reducedMotion;
+    if (repel) {
+      // cursor velocity in world units/sec (XY), smoothed so it ramps and then
+      // decays to zero when the pointer stops — drives the directional "hit".
+      tmpVel.subVectors(this.cursor, this.cursorPrev).multiplyScalar(1 / PHYSICS_STEP);
+      this.cursorVel.lerp(tmpVel, 0.5);
+      this.cursorPrev.copy(this.cursor);
+    }
     for (const jack of this.jacks) {
       const pos = jack.body.translation();
       const vel = jack.body.linvel();
@@ -508,15 +513,34 @@ export class HeroScene {
       const p = jack.driftPhase;
       const drift = this.reducedMotion ? 0 : DRIFT_ACCEL;
 
+      // home spring + idle drift, expressed as acceleration (per unit mass)
+      let ax = SPRING_STIFFNESS * (home.x - pos.x) - SPRING_DAMPING * vel.x + drift * Math.sin(t * f.x + p.x);
+      let ay = SPRING_STIFFNESS * (home.y - pos.y) - SPRING_DAMPING * vel.y + drift * Math.sin(t * f.y + p.y);
+      const az = SPRING_STIFFNESS * (home.z - pos.z) - SPRING_DAMPING * vel.z + drift * Math.sin(t * f.z + p.z);
+
+      // Cursor acts like a moving paddle. Each nearby jack is pushed along the
+      // contact normal (cursor -> jack); the impulse sums a gentle always-on
+      // radial push (HOLE_ACCEL — keeps a hole you can't rest on) and a velocity
+      // term that only fires when the cursor is CLOSING on the jack — so a sweep
+      // knocks shapes off in its travel direction instead of spraying randomly.
+      if (repel) {
+        const dx = pos.x - this.cursor.x;
+        const dy = pos.y - this.cursor.y;
+        const d = Math.hypot(dx, dy);
+        if (d < REPEL_RADIUS) {
+          const inv = d > 1e-3 ? 1 / d : 0;
+          const nx = dx * inv;
+          const ny = dy * inv;
+          const falloff = Math.pow(1 - d / REPEL_RADIUS, REPEL_FALLOFF);
+          const approach = Math.max(0, this.cursorVel.x * nx + this.cursorVel.y * ny);
+          const push = HOLE_ACCEL * falloff + HIT_GAIN * falloff * approach;
+          ax += push * nx;
+          ay += push * ny;
+        }
+      }
+
       jack.body.resetForces(false);
-      jack.body.addForce(
-        {
-          x: m * (SPRING_STIFFNESS * (home.x - pos.x) - SPRING_DAMPING * vel.x + drift * Math.sin(t * f.x + p.x)),
-          y: m * (SPRING_STIFFNESS * (home.y - pos.y) - SPRING_DAMPING * vel.y + drift * Math.sin(t * f.y + p.y)),
-          z: m * (SPRING_STIFFNESS * (home.z - pos.z) - SPRING_DAMPING * vel.z + drift * Math.sin(t * f.z + p.z)),
-        },
-        !this.reducedMotion,
-      );
+      jack.body.addForce({ x: m * ax, y: m * ay, z: m * az }, !this.reducedMotion);
 
       if (!this.reducedMotion) {
         jack.body.resetTorques(false);
@@ -531,18 +555,6 @@ export class HeroScene {
       }
     }
     this.simTime += PHYSICS_STEP;
-  }
-
-  private stepPointer(): void {
-    if (this.pointerActive) {
-      // critically-damped chase keeps the pointer collider from teleporting
-      this.pointerCurrent.lerp(this.pointerTarget, 0.35);
-    }
-    this.pointerBody.setNextKinematicTranslation({
-      x: this.pointerCurrent.x,
-      y: this.pointerCurrent.y,
-      z: 0,
-    });
   }
 
   private syncMeshes(): void {
@@ -572,12 +584,17 @@ export class HeroScene {
 
     this.worldHeight = WORLD_WIDTH / aspect;
 
-    const halfFov = THREE.MathUtils.degToRad(CAMERA_FOV / 2);
+    // Longer lens on wide viewports, wider on tall ones — the real site fits
+    // FOV to aspect (≈18° widescreen … 30° portrait). A narrow FOV flattens
+    // perspective so the cluster reads like a product render, not a fisheye.
+    const fov = fit(aspect, 2.2, 2 / 3, 18, 30);
+    const halfFov = THREE.MathUtils.degToRad(fov / 2);
     const distance = this.worldHeight / 2 / Math.tan(halfFov);
 
     // The floating cluster is centered in the visible volume.
     const centerY = this.worldHeight / 2;
 
+    this.camera.fov = fov;
     this.camera.aspect = aspect;
     this.camera.position.set(0, centerY, distance);
     this.camera.lookAt(0, centerY, 0);
@@ -590,6 +607,12 @@ export class HeroScene {
     this.renderer.setSize(width, height, false);
     this.renderDirty = true;
   }
+}
+
+/** Linear remap of value from [inA,inB] to [outA,outB], clamped to the output. */
+function fit(value: number, inA: number, inB: number, outA: number, outB: number): number {
+  const t = (value - inA) / (inB - inA);
+  return outA + THREE.MathUtils.clamp(t, 0, 1) * (outB - outA);
 }
 
 function shuffle<T>(items: T[]): T[] {

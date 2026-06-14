@@ -25,11 +25,10 @@ export function setupSmoothScroll(): Lenis | null {
   });
   gsap.ticker.lagSmoothing(0);
 
-  // Expose the instance in dev so programmatic scrolling (tests, debugging)
-  // goes through Lenis instead of fighting it via window.scrollTo.
-  if (import.meta.env.DEV) {
-    (window as typeof window & { __lenis?: Lenis }).__lenis = lenis;
-  }
+  // Expose the instance globally so other modules (the project-detail layer's
+  // scroll freeze) and dev tooling can drive Lenis instead of fighting it via
+  // window.scrollTo.
+  (window as typeof window & { __lenis?: Lenis }).__lenis = lenis;
 
   return lenis;
 }

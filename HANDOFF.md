@@ -424,3 +424,48 @@ in good shape. The **reel** has not had a formal review pass yet — do one afte
   also treats "readyState 0 shortly after loadstart" as missing.
 - **`#scroll-nav` must stay the last element on the page** — its progress bar scrub ends
   at `'bottom bottom'`.
+
+---
+
+## 11. Project-details section + backend + sound (2026-06-14)
+
+The **project detail page** (`/projects/<slug>`) was rebuilt faithfully from the real
+site's shipped CSS/JS (extracted to `reference/project-details-extracted.css`; the
+build brief is `docs/project-details-spec.md`). It is a route-aware, per-project
+**themed** full-screen layer over the home page.
+
+**Architecture**
+- Data contract: `shared/projects.ts` — `ProjectDetail`/`ThemePalette`/`MediaItem`
+  types + 6 ORIGINAL placeholder case studies, chained in a ring for "next project".
+  Imported by BOTH the backend (to serve) and the frontend (types + offline fallback).
+- Backend: `server/` — Express + TypeScript (run `npm run server`, or `npm run dev:all`
+  for web+api together; Vite proxies `/api` → `:3001`). Endpoints: `GET /api/projects`,
+  `GET /api/projects/:slug` (404 envelope on miss), `POST /api/newsletter`/`/contact`
+  (zod-validated, file-backed `server/data/*.jsonl`). Security headers, env CORS
+  (`CORS_ORIGIN`), split rate-limit (strict on POSTs), path-boundary guard. Has its own
+  `server/tsconfig.json` (NodeNext) — NOT covered by the root `tsc` (root is bundler).
+- Frontend: `src/data/projects.ts` (fetch `/api` with offline fallback to the shared
+  data), `src/ui/projectDetail.ts` (the layer: theme injection into `--project-details-*`
+  vars, data-driven DOM, open/close choreography, **horizontal** media gallery scroll,
+  next-project hold/over-scroll advance, `inert` focus containment + keyboard gallery),
+  `src/ui/router.ts` (History routing, click interception on `a[href^="/projects/"]`,
+  popstate), `src/ui/transition.ts` (`#transition-overlay` canvas wipe, serialized plays),
+  `src/audio/soundEngine.ts`. Styles: `projectDetail.css`, `projectsHeader.css`
+  (header back-button + `.is-project-details-active`), `transition.css`.
+
+**Key facts / gotchas (hard-won this session)**
+- `#project-details` MUST be `position:fixed` (it lives inside `#ui`; the fixed header
+  z-50 stays above the z-40 layer). `absolute` rendered it at document-top → off-viewport
+  when opened while scrolled. (Verified: covers the viewport at any scroll offset.)
+- The masked title rise needs `#project-details-title .word-mask{overflow:hidden;display:inline-block}`
+  + `.word{display:inline-block}` — without it `splitWords` + `yPercent` is a silent no-op.
+- The transition canvas uses **raw `requestAnimationFrame`**, so in an occluded/automated
+  tab it suspends and the route swap never reaches its midpoint — verify the nav flow by
+  redirecting `window.requestAnimationFrame` through `setTimeout` (and ticking gsap), or
+  on a real foregrounded browser. Not a product bug.
+- Sound: UI SFX are **synthesized** in Web Audio (hover/click/focus/page/glass);
+  background music is **AI-generated** original loops in `public/assets/audios/`
+  (`ambient.m4a` = home/project, `cinematic.m4a` = tunnel, `end.m4a` = end). The engine
+  probes `['m4a','webm','ogg','mp3']` and degrades gracefully if a file is absent. Gated
+  by `#sound-btn`, **default OFF** (autoplay-safe), unlocked on first gesture.
+- Featured tiles now link to `/projects/<slug>` (mapped p1..p6 → the 6 slugs).

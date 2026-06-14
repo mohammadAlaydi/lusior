@@ -1,0 +1,32 @@
+/*
+ * Page-transition overlay canvas. The router/transition module (transition.ts)
+ * draws the wipe here while it swaps the route under it. The canvas spans the
+ * whole viewport above everything (header z-50, project-details z-40); it is
+ * inert by default and only intercepts pointer events for the brief moment a
+ * transition is mid-flight (the .is-active class is toggled by transition.ts).
+ * Background stays transparent so the canvas itself decides what is painted.
+ */
+
+#transition-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 100;
+  pointer-events: none;
+  background: transparent;
+  display: block;
+}
+
+/* mid-transition: block interaction with the page underneath */
+#transition-overlay.is-active {
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* reduced motion uses an instant route swap — keep the overlay inert and
+   * non-painting so nothing animates across the screen. */
+  #transition-overlay {
+    pointer-events: none;
+  }
+}

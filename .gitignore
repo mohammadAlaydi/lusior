@@ -8,3 +8,7 @@ dist/
 # real lusion.co extracted bundles — measurement reference only, never ship
 reference/
 *.tsbuildinfo
+
+# backend submission storage — written at runtime, never commit
+server/data/*.jsonl
+server/dist/

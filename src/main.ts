@@ -3,11 +3,13 @@ import './styles/global.css';
 import './styles/components.css';
 import './styles/preloader.css';
 import './styles/header.css';
+import './styles/projectsHeader.css';
 import './styles/menu.css';
 import './styles/hero.css';
 import './styles/reel.css';
 import './styles/featured.css';
 import './styles/projectDetail.css';
+import './styles/transition.css';
 import './styles/goal.css';
 import './styles/tunnel.css';
 import './styles/end.css';
@@ -24,6 +26,10 @@ import { setupHeaderMenu } from './ui/menu';
 import { setupReelSection, setupReelVideo } from './ui/reel';
 import { setupFeaturedSection } from './ui/featured';
 import { setupProjectDetail } from './ui/projectDetail';
+import { setupRouter, type Router } from './ui/router';
+import { createTransition } from './ui/transition';
+import { createSoundEngine } from './audio/soundEngine';
+import { fetchProject } from './data/projects';
 import { setupGoalSection } from './ui/goal';
 import { setupTunnelZone } from './ui/tunnel';
 import { setupEndSection } from './ui/end';
@@ -35,14 +41,6 @@ import { TrailCursor } from './ui/trailCursor';
 
 function setViewportUnit(): void {
   document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
-}
-
-function setupSoundButton(): void {
-  const button = document.getElementById('sound-btn');
-  button?.addEventListener('click', () => {
-    const pressed = button.getAttribute('aria-pressed') === 'true';
-    button.setAttribute('aria-pressed', String(!pressed));
-  });
 }
 
 // Module-scoped so the boot failure handler can still clear the black screen.
@@ -60,7 +58,6 @@ async function boot(): Promise<void> {
 
   setViewportUnit();
   window.addEventListener('resize', setViewportUnit);
-  setupSoundButton();
 
   const title = document.getElementById('hero-title');
   const canvas = document.getElementById('webgl') as HTMLCanvasElement | null;
@@ -82,7 +79,21 @@ async function boot(): Promise<void> {
   setupReelSection();
   setupReelVideo();
   setupFeaturedSection();
-  setupProjectDetail({ onOpen: () => lenis?.stop(), onClose: () => lenis?.start() });
+
+  // --- sound + project-detail routing --------------------------------------
+  // The sound engine owns the #sound-btn toggle; the transition wipe and the
+  // History router drive the per-project detail layer. The detail controller
+  // freezes Lenis itself (via window.__lenis) while a project is open.
+  const sound = createSoundEngine({ buttonId: 'sound-btn' });
+  const transition = createTransition({ sound });
+  let router: Router;
+  const detail = setupProjectDetail({
+    sound,
+    onRequestProject: (slug) => router.navigate(`/projects/${slug}`),
+    onRequestClose: () => router.navigate('/'),
+  });
+  router = setupRouter({ detail, transition, sound, loadProject: fetchProject });
+
   setupGoalSection();
   const tunnelZone = setupTunnelZone();
   setupEndSection();
@@ -117,6 +128,43 @@ async function boot(): Promise<void> {
   // Trigger positions were measured during boot, before fonts settled layout
   // and the reel pin spacer reached its final height — re-measure once now.
   ScrollTrigger.refresh();
+
+  // Activate client-side routing once layout is settled. On a deep-link to
+  // /projects/<slug> this opens the detail layer immediately (no transition
+  // cover); on '/' it just normalises history.
+  router.start();
+
+  // Scene music: crossfade the background bed as the user scrolls the home
+  // page through the tunnel and end zones. The router owns the 'project' scene
+  // while a detail layer is open, so skip while one is active.
+  const sceneZones = { tunnel: false, end: false };
+  const refreshScene = (): void => {
+    if (document.documentElement.classList.contains('is-project-details-active')) return;
+    if (sceneZones.end) sound.setScene('end');
+    else if (sceneZones.tunnel) sound.setScene('tunnel');
+    else sound.setScene('home');
+  };
+  const tunnelZoneEl = document.getElementById('tunnel');
+  const endZoneEl = document.getElementById('end');
+  if (tunnelZoneEl) {
+    new IntersectionObserver(
+      ([entry]) => {
+        sceneZones.tunnel = entry.isIntersecting;
+        refreshScene();
+      },
+      { threshold: 0.25 },
+    ).observe(tunnelZoneEl);
+  }
+  if (endZoneEl) {
+    new IntersectionObserver(
+      ([entry]) => {
+        sceneZones.end = entry.isIntersecting;
+        refreshScene();
+      },
+      { threshold: 0.25 },
+    ).observe(endZoneEl);
+  }
+
   playIntro(words);
 
   const scene = new HeroScene(canvas, container);

@@ -1,0 +1,211 @@
+/*
+ * Header cluster for the project-detail flow — the back button that lives in
+ * #header-center, the top-right project info line, and the "a project is open"
+ * recolour of the logo. Ported faithfully from the reference (about.*.css)
+ * onto our tokens.
+ *
+ * The back button rests at scale(0); html.is-project-details-active scales it
+ * in. It sits inside #header (z-50) so it stays above #project-details (z-40)
+ * and clickable. All theme colours come from the --project-details-* vars,
+ * whose :root defaults are declared at the bottom so nothing is unset before a
+ * project opens (matching the reference :root defaults).
+ */
+
+#header-center {
+  position: relative;
+  pointer-events: none;
+}
+
+#header-center > * {
+  pointer-events: auto;
+}
+
+/* --- back button (in #header-center) -------------------------------------- */
+#header-center-project-back-btn {
+  position: absolute;
+  left: 54.5em;
+  top: var(--base-padding-y);
+  padding: 0 1.5em 0 1em;
+  height: 3.2em;
+  font-size: 0.875em;
+  background: var(--project-details-btn-bg, #fff);
+  color: var(--project-details-btn-text);
+  font-weight: 500;
+  border-radius: 100px;
+  border: none;
+  text-transform: uppercase;
+  width: fit-content;
+  pointer-events: auto;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.625em;
+  overflow: hidden;
+  transform: scale(0);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* a project is open -> the button scales in */
+.is-project-details-active #header-center-project-back-btn {
+  transform: scale(1);
+}
+
+/* flood child: scaleY background sweep on hover (origin bottom) */
+#project-details-header-back-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--project-details-btn-bg-hover);
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#header-center-project-back-btn svg {
+  height: 1.2em;
+  width: 1.2em;
+  z-index: 1;
+  transition:
+    color 0.5s,
+    transform 0.4s cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#header-center-project-back-btn-text {
+  display: none; /* text hidden by default — keep this (reference does too) */
+  margin: 0;
+  z-index: 1;
+  transition:
+    color 0.5s,
+    transform 0.4s cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+#header-center-project-back-btn-svg2 {
+  position: absolute;
+  right: 0;
+  z-index: 1;
+  transform: translate3d(1em, 0, 0);
+}
+
+/* hover: the two arrows + text shift left, the flood sweeps up */
+@media (hover: hover) {
+  #header-center-project-back-btn:hover {
+    color: var(--project-details-btn-text);
+  }
+
+  #header-center-project-back-btn:hover #project-details-header-back-background {
+    transform: scaleY(1);
+  }
+
+  #header-center-project-back-btn:hover #header-center-project-back-btn-svg {
+    transform: translate3d(-2em, 0, 0);
+  }
+
+  #header-center-project-back-btn:hover #header-center-project-back-btn-text {
+    transform: translate3d(-1.3em, 0, 0);
+  }
+
+  #header-center-project-back-btn:hover #header-center-project-back-btn-svg2 {
+    transform: translate3d(-1em, 0, 0);
+  }
+}
+
+#header-center-project-back-btn:focus-visible {
+  outline: 2px solid var(--project-details-highlight);
+  outline-offset: 3px;
+}
+
+/* responsive left/right offsets (ground-truth from the reference) */
+@media (min-aspect-ratio: 21/9) {
+  #header-center-project-back-btn {
+    left: 68.5em;
+  }
+}
+
+@media (max-width: 1200px) {
+  #header-center-project-back-btn {
+    left: auto;
+    right: 27.5em;
+  }
+}
+
+/* mobile: square icon-only button anchored to the right */
+@media (max-width: 812px) {
+  #header-center-project-back-btn {
+    right: calc(var(--base-padding-x) + 4em);
+    left: inherit;
+    width: 3.2em;
+    padding: 0;
+    justify-content: center;
+  }
+}
+
+/* --- top-right project info ("CATEGORY - YEAR", filled by logic agent) ----- */
+#project-details-header-info {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  right: calc(var(--base-padding-x) + 22em);
+  align-items: center;
+  display: flex;
+  gap: 0.625em;
+  font-size: 0.75em;
+  text-transform: uppercase;
+  overflow: hidden;
+  z-index: 1;
+  color: var(--project-details-highlight);
+  margin: 0;
+  pointer-events: none;
+  max-width: 22em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#project-details-header-info svg {
+  width: 1em;
+  height: 1em;
+  transition: color 0.5s;
+}
+
+@media (max-width: 812px) {
+  #project-details-header-info {
+    display: none;
+  }
+}
+
+/* --- "a project is open" logo recolour ------------------------------------ */
+.is-project-details-active #header-logo,
+.is-project-details-active #logo {
+  color: var(--project-details-highlight);
+}
+
+/* --- reduced motion ------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  #header-center-project-back-btn,
+  #project-details-header-back-background,
+  #header-center-project-back-btn svg,
+  #header-center-project-back-btn-text,
+  #header-center-project-back-btn-svg2 {
+    transition-duration: 0.01ms;
+  }
+}
+
+/*
+ * Default project-detail theme vars. Declared on :root so every
+ * --project-details-* reference resolves before a project injects its palette
+ * (the logic agent overrides these on #project-details / :root at open time).
+ * Mirrors the reference :root defaults: black-on-... neutral resting state.
+ */
+:root {
+  --project-details-bg: #000;
+  --project-details-bg-alt: #111;
+  --project-details-text: #000;
+  --project-details-highlight: #000;
+  --project-details-btn-bg: #fff;
+  --project-details-btn-bg-hover: #000;
+  --project-details-btn-text: #000;
+  --project-details-btn-text-hover: #fff;
+  --project-details-icon-bg: #fff;
+  --project-details-icon-color: #000;
+}

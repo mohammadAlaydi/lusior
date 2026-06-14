@@ -1,184 +1,685 @@
-/* Project detail overlay — the "open a project" flow. On the real site a
- * tile click navigates to /projects/<slug> behind a full-screen transition
- * wipe; we are a single page, so a fixed overlay plays the same gesture:
- * panel wipes up, hero media + type reveal, close reverses. */
-#project-overlay {
+/*
+ * Project-detail layer — the per-project themed case study that covers the
+ * home page after a transition wipe (route /projects/<slug>). Ported faithfully
+ * from reference/project-details-extracted.css onto our token system; every
+ * measurement here is ground-truth from the real bundle, only the values that
+ * are ours (z-index, panel placeholder gradient) are reasoned below.
+ *
+ * z-index: the layer sits OVER the page content but BELOW the fixed header
+ * (#header is z-50). The reference used z-10 against a different stack; here we
+ * use z-40 so the layer covers everything on the page yet the header — and the
+ * back button / #header-center inside it — stay above and clickable.
+ *
+ * Theme vars (--project-details-*) are injected per project by the logic agent
+ * (defaults live in projectsHeader.css so nothing is unset before open).
+ */
+
+#project-details {
   position: fixed;
-  inset: 0;
-  z-index: 60;
-  visibility: hidden;
-  pointer-events: none;
-  font-size: clamp(0.875rem, 1vw, 2rem);
-  color: var(--color-black);
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: calc(var(--vh, 1vh) * 100);
+  z-index: 40;
+  padding: var(--base-padding-y) var(--base-padding-x);
+  background: var(--project-details-bg);
+  color: var(--project-details-text);
+  font-size: clamp(1rem, 1vw, 1.5rem);
+  overflow: hidden;
 }
 
-#project-overlay.is-open {
-  visibility: visible;
+/* Closed state: when no project is open the layer must not cover the page.
+ * The controller toggles html.is-project-details-active on open/close; without
+ * this rule the unconditional `display: block` above sits over the hero on '/'. */
+html:not(.is-project-details-active) #project-details {
+  display: none;
+}
+
+@media (max-width: 380px) {
+  #project-details {
+    font-size: clamp(0.75rem, 1vw, 2rem);
+  }
+}
+
+@media (min-aspect-ratio: 21/9) {
+  #project-details {
+    font-size: clamp(0.75rem, 1vw, 2.5rem);
+  }
+}
+
+@media (max-width: 812px) {
+  #project-details {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* --- centred meta block (float two-column) -------------------------------- */
+#project-details-meta {
+  position: absolute;
+  top: 50%;
+  width: 34em;
+  transform: translate3d(0, -50%, 0);
+  pointer-events: none;
+}
+
+#project-details-meta a {
+  pointer-events: none;
+}
+
+/* logic agent sets .is-active once the reveal finishes so links arm */
+#project-details-meta.is-active a {
   pointer-events: auto;
 }
 
-/* the wipe panel itself — gsap drives its translateY */
-#project-overlay-inner {
-  position: absolute;
-  inset: 0;
-  background: var(--color-off-white);
-  transform: translateY(100%);
-  will-change: transform;
+#project-details-meta::after {
+  content: '';
+  display: block;
+  clear: both;
 }
 
-#project-overlay-scroll {
-  position: absolute;
-  inset: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: calc(var(--base-padding-y) * 2.5) var(--base-padding-x)
-    calc(var(--base-padding-y) * 3);
+@media (max-width: 812px) {
+  #project-details-meta {
+    position: relative;
+    top: 0;
+    width: 100%;
+    padding-top: calc(var(--vh, 1vh) * 10);
+    padding-bottom: 50px;
+    transform: translateZ(0);
+    min-width: inherit;
+  }
 }
 
-#project-overlay-close {
-  position: absolute;
-  top: var(--base-padding-y);
-  right: var(--base-padding-x);
-  z-index: 2;
-  width: 2.8em;
-  height: 2.8em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 100%;
-  background: var(--color-dark-white);
-  color: var(--color-black);
-  transition:
-    background-color 0.3s,
-    transform 0.3s cubic-bezier(0.4, 0, 0.1, 1);
-}
-
-#project-overlay-close:hover,
-#project-overlay-close:focus-visible {
-  background: var(--color-white);
-  transform: scale(1.08);
-}
-
-#project-overlay-close svg {
-  width: 35%;
-  height: auto;
-}
-
-/* --- hero media ----------------------------------------------------------- */
-#project-overlay-hero {
-  position: relative;
-  width: 100%;
-  height: calc(var(--vh, 1vh) * 62);
-  border-radius: var(--global-border-radius);
-  overflow: hidden;
-  background: var(--color-ink);
-  will-change: transform, clip-path;
-}
-
-#project-overlay-media {
-  position: absolute;
-  inset: 0;
-  background-size: cover;
-  background-position: center;
-}
-
-#project-overlay-video {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-}
-
-#project-overlay-video.is-playing {
-  opacity: 1;
-}
-
-/* --- head: meta + title ---------------------------------------------------- */
-#project-overlay-head {
-  margin-top: 2.5em;
-}
-
-#project-overlay-meta {
-  margin: 0 0 0.8em;
-  font-size: 0.9vw;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-#project-overlay-title {
-  position: relative;
-  left: -0.04em;
+#project-details-title,
+#project-details-preview-title {
+  font-size: 4.5em;
+  line-height: 0.95;
   margin: 0;
-  overflow: hidden;
-  font-size: 7vw;
-  font-weight: 400;
-  line-height: 1;
-  letter-spacing: -0.02em;
 }
 
-#project-overlay-title .title-inner {
+/* masked title rise: each word sits in an overflow-hidden mask so the GSAP
+ * per-word y-translate reveals from below (mirrors the hero word pattern) */
+#project-details-title .word-mask {
   display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+#project-details-title .word {
+  display: inline-block;
+  position: relative;
   will-change: transform;
 }
 
-/* --- body: description + visit pill ---------------------------------------- */
-#project-overlay-body {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  column-gap: var(--grid-gap);
+#project-details-left {
+  float: left;
+  width: 60%;
+}
+
+@media (max-width: 812px) {
+  #project-details-left {
+    width: 100%;
+  }
+}
+
+#project-details-right {
+  float: right;
+  width: 40%;
+  padding-left: 20%;
   margin-top: 3em;
 }
 
-#project-overlay-desc {
-  grid-column: 1 / 7;
+@media (max-width: 812px) {
+  #project-details-right {
+    width: 100%;
+    padding-left: 0;
+    margin-top: 0;
+  }
+}
+
+#project-details-desc {
+  font-size: 0.75em;
+  line-height: 1.5em;
+  margin: 4em 0;
+}
+
+#project-details-desc p {
   margin: 0;
-  font-size: 1.5em;
+}
+
+#project-details-desc p:not(:first-child) {
+  margin-top: 1em;
+}
+
+@media (max-width: 812px) {
+  #project-details-desc {
+    max-width: 30em;
+    font-size: clamp(1rem, 1.5vw, 3rem);
+  }
+}
+
+/* --- inline underline links (desc + side list) ---------------------------- */
+#project-details-desc a {
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+
+#project-details-desc a,
+#project-details-side-list a {
+  position: relative;
+  display: inline-block;
+}
+
+#project-details-desc a::after,
+#project-details-side-list a::after {
+  position: absolute;
+  content: '';
+  left: 0;
+  top: 100%;
+  width: 100%;
+  height: 1px;
+  transform: scaleX(0);
+  transform-origin: 0 0;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (hover: hover) {
+  #project-details-desc a:hover::after,
+  #project-details-side-list a:hover::after {
+    transform: scaleX(1);
+  }
+}
+
+#project-details-desc a {
+  color: var(--project-details-highlight);
+}
+
+#project-details-desc a::after {
+  margin-top: -0.25em;
+  background-color: var(--project-details-highlight);
+}
+
+#project-details-side-list a {
+  color: var(--project-details-text);
+}
+
+#project-details-side-list a::after {
+  background-color: var(--project-details-text);
+}
+
+/* --- right-hand side list (Services / Credits / Links) -------------------- */
+#project-details-side-list {
+  position: relative;
+  font-size: 0.75em;
+}
+
+@media (max-width: 812px) {
+  #project-details-side-list {
+    position: static;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    font-size: clamp(1rem, 1.5vw, 3rem);
+  }
+}
+
+.project-details-side-list-title {
+  color: var(--project-details-highlight);
+  text-transform: uppercase;
+  margin-top: 0;
+  margin-bottom: 1em;
+}
+
+.project-details-side-list-item {
+  font-family: var(--font-sans);
+  color: var(--project-details-text);
   line-height: 1.4;
+  margin: 0;
 }
 
-#project-overlay-visit {
-  grid-column: 9 / 13;
-  justify-self: end;
-  align-self: start;
-  font-size: clamp(0.875rem, 1vw, 1.75rem);
+#project-details-side-list-links {
+  margin-top: 4em;
+}
+
+@media (max-width: 812px) {
+  #project-details-side-list-links {
+    margin-top: 0;
+  }
+}
+
+/* --- launch CTA (flood pill, dot scales 26 like .cta-pill) ----------------- */
+#project-details-launch-cta-mobile,
+#project-details-launch-cta {
+  display: none;
   height: 3.375em;
+  padding: 1em 1.5em 1em 1.125em;
+  align-items: center;
+  gap: 1.125em;
+  width: fit-content;
+  overflow: hidden;
+  background: var(--project-details-btn-bg, #fff);
+  border-radius: 100px;
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--project-details-btn-text);
+  transition: background 0.5s cubic-bezier(0.35, 0, 0, 1);
 }
 
-/* --- responsive ------------------------------------------------------------ */
-@media (max-width: 768px) {
-  #project-overlay-hero {
-    height: calc(var(--vh, 1vh) * 42);
-  }
-
-  #project-overlay-meta {
-    font-size: 3vw;
-  }
-
-  #project-overlay-title {
-    font-size: 13vw;
-  }
-
-  #project-overlay-body {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    row-gap: 2.5em;
-  }
-
-  #project-overlay-desc {
-    grid-column: 1 / 7;
-    font-size: 1.125em;
-  }
-
-  #project-overlay-visit {
-    grid-column: 1 / 7;
-    justify-self: start;
+@media (max-width: 812px) {
+  #project-details-launch-cta-mobile,
+  #project-details-launch-cta {
+    font-size: 1em;
   }
 }
 
+/* .has-cta is toggled by the logic agent when launchUrl exists */
+#project-details.has-cta #project-details-launch-cta {
+  display: flex;
+}
+
+#project-details.has-cta #project-details-launch-cta-mobile {
+  display: none;
+}
+
+@media (max-width: 812px) {
+  #project-details.has-cta #project-details-launch-cta {
+    display: none;
+  }
+
+  #project-details-launch-cta-mobile {
+    margin-top: 4em;
+  }
+
+  #project-details.has-cta #project-details-launch-cta-mobile {
+    display: flex;
+  }
+}
+
+#project-details-launch-cta-mobile-dot,
+#project-details-launch-cta-dot {
+  width: 0.5em;
+  height: 0.5em;
+  background: var(--project-details-btn-text);
+  border-radius: 100px;
+  z-index: 1;
+  transition:
+    background 0.5s cubic-bezier(0.35, 0, 0, 1),
+    transform 0.4s cubic-bezier(0.35, 0, 0, 1);
+}
+
+#project-details-launch-cta-mobile-text,
+#project-details-launch-cta-text {
+  font-size: 0.875em;
+  position: relative;
+  margin: 0;
+  z-index: 1;
+  font-weight: 500;
+  transition:
+    color 0.5s cubic-bezier(0.35, 0, 0, 1) 0.1s,
+    transform 0.4s cubic-bezier(0.35, 0, 0, 1) 0.1s;
+}
+
+#project-details-launch-cta-mobile-arrow,
+#project-details-launch-cta-arrow {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  top: calc(50% - 0.75em);
+  right: 0.75em;
+  height: 1.5em;
+  width: 1.5em;
+  background: var(--color-white);
+  border-radius: 100%;
+  transform: scale(0);
+  transition: transform 0.4s cubic-bezier(0.35, 0, 0, 1);
+  z-index: 1;
+}
+
+#project-details-launch-cta-mobile-arrow svg,
+#project-details-launch-cta-arrow svg {
+  width: 90%;
+  height: 90%;
+  transition: color 0.5s;
+}
+
+/* hover flood — exactly the .cta-pill mechanic: label slides left, dot floods
+ * to scale(26), arrow chip scales in, colours swap to the project highlight */
+@media (hover: hover) {
+  #project-details-launch-cta-mobile:hover,
+  #project-details-launch-cta:hover {
+    color: var(--project-details-btn-text-hover);
+    background: var(--project-details-highlight);
+    transition: background 0.5s cubic-bezier(0.35, 0, 0, 1) 0.1s;
+  }
+
+  #project-details-launch-cta-mobile:hover #project-details-launch-cta-text,
+  #project-details-launch-cta:hover #project-details-launch-cta-text,
+  #project-details-launch-cta-mobile:hover #project-details-launch-cta-mobile-text,
+  #project-details-launch-cta:hover #project-details-launch-cta-mobile-text {
+    transform: translate3d(-20%, 0, 0);
+    transition:
+      color 0.5s cubic-bezier(0.35, 0, 0, 1),
+      transform 0.4s cubic-bezier(0.35, 0, 0, 1);
+  }
+
+  #project-details-launch-cta-mobile:hover #project-details-launch-cta-dot,
+  #project-details-launch-cta:hover #project-details-launch-cta-dot,
+  #project-details-launch-cta-mobile:hover #project-details-launch-cta-mobile-dot,
+  #project-details-launch-cta:hover #project-details-launch-cta-mobile-dot {
+    transform: translate3d(5em, 0, 0) scale(26);
+    background: var(--project-details-highlight);
+  }
+
+  #project-details-launch-cta-mobile:hover #project-details-launch-cta-arrow,
+  #project-details-launch-cta:hover #project-details-launch-cta-arrow,
+  #project-details-launch-cta-mobile:hover #project-details-launch-cta-mobile-arrow,
+  #project-details-launch-cta:hover #project-details-launch-cta-mobile-arrow {
+    transform: scale(1);
+    transition: transform 0.4s cubic-bezier(0.35, 0, 0, 1) 0.1s;
+  }
+
+  #project-details-launch-cta-mobile:hover #project-details-launch-cta-arrow svg,
+  #project-details-launch-cta:hover #project-details-launch-cta-arrow svg,
+  #project-details-launch-cta-mobile:hover #project-details-launch-cta-mobile-arrow svg,
+  #project-details-launch-cta:hover #project-details-launch-cta-mobile-arrow svg {
+    color: var(--project-details-icon-color);
+  }
+}
+
+/* --- horizontal media gallery -------------------------------------------- */
+#project-details-items-wrapper {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: calc(100% - var(--base-padding-y) * 4 - var(--header-size) * 3.9);
+  top: calc(var(--base-padding-y) * 2 + var(--header-size) * 2.8);
+}
+
+#project-details-items-move-container {
+  position: absolute;
+  padding-left: 48em;
+  padding-right: 0;
+  height: 100%;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+@media (max-width: 812px) {
+  #project-details-items-move-container {
+    position: relative;
+    padding-left: 0;
+    width: calc(100vw - var(--base-padding-x) * 2);
+    height: auto;
+    white-space: normal;
+    will-change: auto;
+  }
+}
+
+.project-details-item {
+  position: relative;
+  display: inline-block;
+  vertical-align: top;
+  margin-left: 5em;
+  visibility: hidden;
+}
+
+.project-details-item:first-child {
+  margin-left: 0;
+}
+
+.project-details-item:last-child {
+  margin-right: 10vw;
+}
+
+@media (max-width: 812px) {
+  .project-details-item {
+    margin-left: var(--base-padding-x);
+    margin-top: 50px;
+  }
+
+  .project-details-item:first-child {
+    margin-left: var(--base-padding-x);
+  }
+
+  .project-details-item:last-child {
+    margin-bottom: 50px;
+  }
+}
+
+.project-details-item-text {
+  position: relative;
+  top: 50%;
+  width: 100%;
+  padding: 0 1.2em;
+  transform: translate3d(0, -50%, 0);
+  line-height: 1.4em;
+  white-space: normal;
+  color: var(--project-details-text);
+}
+
+@media (max-width: 812px) {
+  .project-details-item-text {
+    top: 0;
+    margin: 1em 0;
+    transform: translateZ(0);
+  }
+}
+
+/* --- media fill (image / video stretch to the gallery band) --------------- */
+.project-details-item img,
+.project-details-item video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--global-border-radius);
+}
+
+/* --- panel placeholder (original themed gradient, no stock art) -----------
+ * Layered radial + linear gradients climb from the project's --bg-alt up to
+ * its --highlight so each panel reads as a rich, intentional surface; a big
+ * faint label sits behind it (original wordmark feel). Tone shifts the mix. */
+.project-details-item[data-kind='panel'] {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--global-border-radius);
+  /* solid themed fallback: engines without color-mix() drop the gradient
+   * shorthand below but keep this, so the panel still reads as a surface */
+  background-color: var(--project-details-bg-alt);
+  background:
+    radial-gradient(
+      120% 140% at 18% 12%,
+      color-mix(in srgb, var(--project-details-highlight) 55%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      90% 120% at 92% 96%,
+      color-mix(in srgb, var(--project-details-highlight) 28%, transparent) 0%,
+      transparent 55%
+    ),
+    linear-gradient(
+      135deg,
+      var(--project-details-bg-alt) 0%,
+      color-mix(in srgb, var(--project-details-bg-alt) 70%, var(--project-details-highlight)) 100%
+    );
+}
+
+.project-details-item[data-kind='panel'][data-tone='dark'] {
+  background:
+    radial-gradient(
+      110% 130% at 82% 14%,
+      color-mix(in srgb, var(--project-details-highlight) 30%, transparent) 0%,
+      transparent 58%
+    ),
+    linear-gradient(
+      150deg,
+      color-mix(in srgb, var(--project-details-bg) 85%, #000) 0%,
+      var(--project-details-bg-alt) 100%
+    );
+}
+
+.project-details-item[data-kind='panel'][data-tone='light'] {
+  background:
+    radial-gradient(
+      120% 140% at 20% 14%,
+      color-mix(in srgb, var(--project-details-highlight) 40%, #fff) 0%,
+      transparent 62%
+    ),
+    linear-gradient(
+      130deg,
+      color-mix(in srgb, var(--project-details-bg-alt) 35%, #fff) 0%,
+      color-mix(in srgb, var(--project-details-highlight) 45%, #fff) 100%
+    );
+}
+
+/* big faint wordmark drawn into the panel */
+.project-details-item[data-kind='panel'] .project-details-item-label {
+  position: absolute;
+  left: 0.4em;
+  bottom: 0.1em;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 4.5em;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--project-details-text) 12%, transparent);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* --- next-project preview ------------------------------------------------- */
+#project-details-preview {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 812px) {
+  #project-details-preview {
+    left: var(--base-padding-x);
+    width: calc(100% - var(--base-padding-x) * 2);
+  }
+}
+
+#project-details-preview-inner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 812px) {
+  #project-details-preview-inner {
+    height: auto;
+    padding: calc(var(--vh, 1vh) * 2) 0;
+  }
+}
+
+#project-details-preview-title {
+  position: absolute;
+  left: 0;
+  margin: 0;
+  top: 50%;
+  transform: translate3d(0, -50%, 0);
+}
+
+@media (max-width: 812px) {
+  #project-details-preview-title {
+    position: relative;
+    top: auto;
+    transform: translateZ(0);
+  }
+}
+
+#project-details-preview-footer {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  position: absolute;
+  left: 0;
+  bottom: var(--base-padding-y);
+  width: 14em;
+}
+
+@media (min-aspect-ratio: 21/9) {
+  #project-details-preview-footer {
+    width: 16em;
+    gap: 2em;
+  }
+}
+
+@media (max-width: 812px) {
+  #project-details-preview-footer {
+    position: relative;
+    bottom: auto;
+    margin-top: calc(var(--vh, 1vh) * 5);
+    width: 100%;
+  }
+}
+
+#project-details-preview-footer-text {
+  font-size: 0.875em;
+  color: var(--color-black);
+  margin: 0;
+}
+
+#project-details-preview-footer-bar {
+  position: relative;
+  border-radius: 16px;
+  height: 4px;
+  flex-grow: 1;
+}
+
+#project-details-preview-footer-bar-background {
+  position: absolute;
+  background: var(--color-black);
+  height: 3px;
+  width: 100%;
+  opacity: 0.2;
+}
+
+#project-details-preview-footer-bar-inner {
+  width: 100%;
+  height: 3px;
+  background: var(--project-details-highlight);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+}
+
+#project-details-preview-footer-arrow {
+  width: 1em;
+  height: 1em;
+}
+
+@media (max-width: 812px) {
+  #project-details-preview-footer-arrow {
+    transform: rotate(90deg);
+  }
+}
+
+/* --- reduced motion: neutralise the long flood/underline transitions ------ */
 @media (prefers-reduced-motion: reduce) {
-  #project-overlay-inner {
-    transform: none;
+  #project-details-launch-cta,
+  #project-details-launch-cta-mobile,
+  #project-details-launch-cta-dot,
+  #project-details-launch-cta-mobile-dot,
+  #project-details-launch-cta-text,
+  #project-details-launch-cta-mobile-text,
+  #project-details-launch-cta-arrow,
+  #project-details-launch-cta-mobile-arrow,
+  #project-details-desc a::after,
+  #project-details-side-list a::after,
+  #project-details-preview-footer-bar-inner,
+  #project-details-items-move-container {
+    transition-duration: 0.01ms;
   }
 }
