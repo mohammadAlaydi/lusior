@@ -34,10 +34,16 @@ export interface ProjectDetailDeps {
 
 /** Breakpoint (px) at or below which we stop hijacking scroll (CSS `812px`). */
 const MOBILE_MAX = 812;
-/** Forward over-scroll (px) past `maxScroll` that fills `nextProjectRatio`. */
-const NEXT_ADVANCE_DISTANCE = 600;
+/** Forward over-scroll (px) past `maxScroll` that fills `nextProjectRatio`.
+ * Deliberately long: on the reference the "Next" bar fills over a sustained
+ * pull, not a single wheel notch. A short distance reads as the page jumping
+ * straight to the next project the instant you reach the gallery's end. */
+const NEXT_ADVANCE_DISTANCE = 1800;
 /** Pointer/touch drag distance (px) that fills `nextProjectRatio` on the footer. */
-const NEXT_DRAG_DISTANCE = 240;
+const NEXT_DRAG_DISTANCE = 320;
+/** How close (px) the SMOOTHED translate must be to the end before the bar may
+ * start filling — stops the advance firing while the gallery is still sliding. */
+const END_EPSILON = 6;
 
 const ARROW_SVG =
   '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
@@ -632,7 +638,13 @@ function attachInteractions(args: InteractionDeps): () => void {
     if (isMobile()) return; // native vertical scroll once the CSS stacks
     const room = maxScroll - targetX;
     if (delta > 0 && room <= 0.5) {
-      // Past the end: feed forward delta into the next-project ratio.
+      // Past the end: feed forward delta into the next-project ratio — but only
+      // once the gallery has VISUALLY landed at the end. While the smoothed
+      // translate is still catching up to targetX, holding fire keeps the
+      // advance from triggering mid-slide (the "jumps to the next project
+      // immediately" bug). Once the bar has begun, let it run through.
+      const visualAtEnd = -scrollX >= maxScroll - END_EPSILON;
+      if (!visualAtEnd && nextRatio <= 0) return;
       applyNextRatio(nextRatio + delta / NEXT_ADVANCE_DISTANCE);
       return;
     }
