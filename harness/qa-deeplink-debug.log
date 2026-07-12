@@ -1,0 +1,10 @@
+[console.debug] [vite] connecting...
+[requestfailed] http://localhost:5173/reel/desktop.mp4
+[console.debug] [vite] connected.
+[console.warning] [.WebGL-0x285c001bd000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[console.warning] using deprecated parameters for the initialization function; pass a single object instead
+[console.warning] [.WebGL-0x285c023b4400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[api] 200 http://localhost:5173/api/projects/meridian
+[console.warning] [.WebGL-0x285c023b4400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[console.warning] [.WebGL-0x285c023b4400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+STATE: {"path":"/projects/meridian","docTitle":"Meridian — Northwind Studio","htmlClass":"is-ready is-project-details-active lenis lenis-stopped","details":{"display":"block","children":3,"ariaHidden":"false"}}

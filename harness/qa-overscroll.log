@@ -1,0 +1,6 @@
+AT-END: {"ratio":0,"previewTransform":"none","title":"Aurora Bloom"}
+PARTIAL-FILL: {"ratio":0,"previewTransform":"none","title":"Aurora Bloom"}
+AFTER-IDLE-1.6s: {"ratio":0,"previewTransform":"none","title":"Aurora Bloom"}
+AFTER-FULL: {"ratio":0,"previewTransform":"none","title":"Aurora Bloom"}
+CTA: {"tag":"A","href":"https://example.com/aurora-bloom","target":"_blank","rel":"noopener noreferrer"}
+VERDICT decayWorks: false

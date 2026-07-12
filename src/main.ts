@@ -22,7 +22,7 @@ import { splitWords } from './ui/splitWords';
 import { playIntro, prepareIntro, revealAll } from './ui/intro';
 import { createPreloader, type Preloader } from './ui/preloader';
 import { setupSmoothScroll, ScrollTrigger } from './ui/scroll';
-import { setupHeaderMenu } from './ui/menu';
+import { setupHeaderMenu, setMenuNavigate } from './ui/menu';
 import { setupReelSection, setupReelVideo } from './ui/reel';
 import { setupFeaturedSection } from './ui/featured';
 import { setupProjectDetail } from './ui/projectDetail';
@@ -57,7 +57,17 @@ async function boot(): Promise<void> {
   preloader = createPreloader();
 
   setViewportUnit();
-  window.addEventListener('resize', setViewportUnit);
+  let vhRefreshTimer = 0;
+  window.addEventListener('resize', () => {
+    setViewportUnit();
+    // GSAP's built-in resize handler can run before --vh updates above, so
+    // ScrollTrigger would cache zone heights measured against the OLD unit
+    // (#tunnel alone is calc(--vh * 400)) — leaving every later trigger and
+    // the scroll-nav progress bar desynced. Re-measure once the resize
+    // settles.
+    window.clearTimeout(vhRefreshTimer);
+    vhRefreshTimer = window.setTimeout(() => ScrollTrigger.refresh(), 200);
+  });
 
   const title = document.getElementById('hero-title');
   const canvas = document.getElementById('webgl') as HTMLCanvasElement | null;
@@ -93,6 +103,8 @@ async function boot(): Promise<void> {
     onRequestClose: () => router.navigate('/'),
   });
   router = setupRouter({ detail, transition, sound, loadProject: fetchProject });
+  // Menu links route through the router when a project overlay is open.
+  setMenuNavigate(router.navigate);
 
   setupGoalSection();
   const tunnelZone = setupTunnelZone();
@@ -165,7 +177,15 @@ async function boot(): Promise<void> {
     ).observe(endZoneEl);
   }
 
-  playIntro(words);
+  // On a deep link the project overlay is opening over the page right now —
+  // reveal the hero statically instead of playing the masked intro behind a
+  // fixed layer nobody can see. The words must still be un-masked, or the
+  // hero is blank when the user navigates back home.
+  if (window.location.pathname.startsWith('/projects/')) {
+    revealAll();
+  } else {
+    playIntro(words);
+  }
 
   const scene = new HeroScene(canvas, container);
   await scene.start();

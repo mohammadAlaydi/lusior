@@ -9,6 +9,16 @@ body {
   width: 100%;
   min-height: 100%;
   margin: 0;
+  /* Belt-and-suspenders against the project-detail gallery's transform-driven
+   * move-container (up to ~6317px wide): #project-details already clips it
+   * with overflow:hidden, but real Chrome (unlike headless) can still surface
+   * a document-level horizontal scrollbar/pannable page from a huge
+   * transformed layer. clip (not hidden) as the final value so it doesn't
+   * turn html/body into a scroll container — hidden does, and that breaks
+   * position:sticky (the tunnel zone) and can fight Lenis; hidden stays only
+   * as the fallback for engines that don't understand the clip keyword. */
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {

@@ -75,8 +75,11 @@ function isInterceptableClick(event: MouseEvent, anchor: HTMLAnchorElement): boo
 }
 
 export function setupRouter(deps: RouterDeps): Router {
-  // The route currently reflected by the DOM (detail layer open/closed).
-  let activeRoute: Route = { kind: 'home' };
+  // The destination of the most recently queued navigation. Dedupe uses this
+  // rather than the last-committed route: mid-flight, the committed route is
+  // stale, so a rapid second click would either re-queue the same trip or be
+  // silently dropped.
+  let targetRoute: Route = { kind: 'home' };
   // Serialises overlapping navigations so a fast double-click can't interleave
   // two transitions / swaps.
   let pending: Promise<void> = Promise.resolve();
@@ -118,12 +121,10 @@ export function setupRouter(deps: RouterDeps): Router {
   ): Promise<void> {
     if (target.kind === 'project' && project) {
       commitHistory(target, pushMode);
-      activeRoute = { kind: 'project', slug: project.slug };
       await applyProject(project, immediate);
       return;
     }
     commitHistory({ kind: 'home' }, pushMode);
-    activeRoute = { kind: 'home' };
     await setHomeState();
   }
 
@@ -137,6 +138,7 @@ export function setupRouter(deps: RouterDeps): Router {
     pushMode: 'push' | 'replace' | 'none',
     immediate: boolean,
   ): void {
+    targetRoute = target;
     pending = pending
       .then(async () => {
         const project =
@@ -145,6 +147,9 @@ export function setupRouter(deps: RouterDeps): Router {
         const resolved: Route =
           target.kind === 'project' && !project ? { kind: 'home' } : target;
         const mode = target.kind === 'project' && !project ? 'replace' : pushMode;
+        if (!routesEqual(resolved, target) && routesEqual(targetRoute, target)) {
+          targetRoute = resolved;
+        }
 
         if (immediate) {
           await commitRoute(resolved, project, mode, true);
@@ -156,15 +161,21 @@ export function setupRouter(deps: RouterDeps): Router {
         }, accent);
       })
       .catch(async () => {
-        // A failed load/open must not wedge the queue for later navigations.
-        activeRoute = { kind: 'home' };
-        await setHomeState();
+        // A failed load/open must not wedge the queue for later navigations —
+        // and the recovery itself must never reject, or `pending` stays a
+        // rejected promise and every subsequent navigation is skipped.
+        try {
+          if (routesEqual(targetRoute, target)) targetRoute = { kind: 'home' };
+          await setHomeState();
+        } catch {
+          // Leave the DOM as-is; the next navigation will retry from here.
+        }
       });
   }
 
   function navigate(path: string, opts?: { replace?: boolean }): void {
     const target = routeFromPath(path);
-    if (routesEqual(target, activeRoute)) return;
+    if (routesEqual(target, targetRoute)) return;
     runNavigation(target, opts?.replace ? 'replace' : 'push', false);
   }
 
@@ -180,7 +191,7 @@ export function setupRouter(deps: RouterDeps): Router {
 
   function onPopState(): void {
     const target = routeFromPath(window.location.pathname);
-    if (routesEqual(target, activeRoute)) return;
+    if (routesEqual(target, targetRoute)) return;
     // History already moved; don't write it again — and animate the change.
     runNavigation(target, 'none', false);
   }
@@ -196,7 +207,7 @@ export function setupRouter(deps: RouterDeps): Router {
       runNavigation(target, 'replace', true);
     } else {
       // Normalise any junk path to '/'.
-      activeRoute = { kind: 'home' };
+      targetRoute = { kind: 'home' };
       if (window.location.pathname !== HOME_PATH) {
         window.history.replaceState({ path: HOME_PATH }, '', HOME_PATH);
       }

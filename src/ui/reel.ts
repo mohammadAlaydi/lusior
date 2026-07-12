@@ -203,7 +203,14 @@ export function setupReelVideo(): void {
   video.addEventListener(
     'error',
     () => {
-      video.hidden = true;
+      // A transient/superseded load also fires 'error' (e.g. an aborted
+      // request) — only hide for a genuine failure where no data was ever
+      // buffered, mirroring the defensive readyState check in
+      // videoOverlay.ts, so a transient abort can't permanently hide a
+      // video that goes on to load fine.
+      if (video.error && video.readyState === HTMLMediaElement.HAVE_NOTHING) {
+        video.hidden = true;
+      }
     },
     { once: true },
   );
@@ -214,9 +221,4 @@ export function setupReelVideo(): void {
       /* autoplay blocked: poster gradient stays */
     });
   });
-
-  // markup ships preload="metadata", which stops short of 'canplay' — pull the
-  // stream so the listener actually fires when the file exists
-  video.preload = 'auto';
-  video.load();
 }

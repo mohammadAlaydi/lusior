@@ -2,21 +2,10 @@
  * Design tokens measured from the reference site (lusion.co).
  * Values are facts (colors, spacing, type scale) — implementation is original.
  */
-@font-face {
-  font-family: 'Aeonik';
-  src: url('/fonts/Aeonik-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: block;
-}
-@font-face {
-  font-family: 'Aeonik';
-  src: url('/fonts/Aeonik-Medium.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-  font-display: block;
-}
-/* Free fallback with very similar metrics/feel (drop Aeonik files in /public/fonts to upgrade). */
+/* Aeonik (commercial) is not shipped — self-hosted Aspekta is the free
+ * fallback with very similar metrics/feel. Drop real Aeonik-Regular.woff2 /
+ * Aeonik-Medium.woff2 files into /public/fonts and re-add the @font-face
+ * blocks + 'Aeonik' to --font-sans below to upgrade (see HANDOFF.md §2). */
 @font-face {
   font-family: 'Aspekta';
   src: url('/fonts/Aspekta-400.woff2') format('woff2');
@@ -56,8 +45,7 @@
   --header-size: clamp(1rem, 1vw, 1.5rem);
   --cross-size: clamp(0.875rem, 1vw, 2rem);
 
-  --font-sans: 'Aeonik', 'Aspekta', 'Inter', system-ui, 'Segoe UI', Roboto, Helvetica, Arial,
-    sans-serif;
+  --font-sans: 'Aspekta', 'Inter', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
   /* set from JS for mobile-safe viewport units */
   --vh: 1vh;

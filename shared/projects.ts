@@ -334,7 +334,7 @@ export const PROJECTS: ProjectDetail[] = [
       { title: 'Services', items: ['Everything, eventually'] },
       { title: 'Links', items: ['Instagram', 'Twitter / X', 'LinkedIn', 'GitHub'], asLinks: true },
     ],
-    launchUrl: 'https://example.com',
+    launchUrl: '/',
     launchLabel: 'Visit the studio',
     theme: {
       bg: '#06160e',

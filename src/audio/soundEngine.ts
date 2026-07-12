@@ -141,45 +141,61 @@ class MusicTrack {
     this.available = this.resolveSource(id);
   }
 
-  /** Try each extension in turn; the first that reports canplay wins. */
+  /**
+   * Probe every candidate extension in parallel via disposable <audio>
+   * elements — the first to report canplay(through) wins and its URL becomes
+   * `this.el`'s source; the rest are cancelled. Bounded by one shared
+   * timeout instead of one per extension (sequential worst case was up to
+   * ~6s for a wholly-absent track; this is ~1.5s). Vite's SPA fallback hands
+   * back 200 text/html for a missing file, so 'error' alone isn't reliable —
+   * the timeout remains the authoritative "nothing panned out" signal.
+   */
   private resolveSource(id: string): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
-      let index = 0;
-      let timer = 0;
+      let settled = false;
+      let errorCount = 0;
+      const cleanups: Array<() => void> = [];
 
-      const cleanup = (): void => {
+      const finish = (ok: boolean, src?: string): void => {
+        if (settled) return;
+        settled = true;
         window.clearTimeout(timer);
-        this.el.removeEventListener('canplaythrough', onReady);
-        this.el.removeEventListener('canplay', onReady);
-        this.el.removeEventListener('error', onError);
-      };
-
-      const onReady = (): void => {
-        cleanup();
-        resolve(true);
-      };
-
-      const tryNext = (): void => {
-        if (index >= AUDIO_EXTENSIONS.length) {
-          cleanup();
-          resolve(false);
-          return;
+        for (const cleanup of cleanups) cleanup();
+        if (ok && src) {
+          this.el.src = src;
+          this.el.load();
         }
-        const ext = AUDIO_EXTENSIONS[index++];
-        this.el.src = `${AUDIO_BASE}/${id}.${ext}`;
-        // Vite's SPA fallback hands back 200 text/html for a missing file, so
-        // we can't rely on 'error' alone — a timeout is the real signal.
-        window.clearTimeout(timer);
-        timer = window.setTimeout(() => tryNext(), TRACK_LOAD_TIMEOUT_MS);
-        this.el.load();
+        resolve(ok);
       };
 
-      const onError = (): void => tryNext();
+      const timer = window.setTimeout(() => finish(false), TRACK_LOAD_TIMEOUT_MS);
 
-      this.el.addEventListener('canplaythrough', onReady);
-      this.el.addEventListener('canplay', onReady);
-      this.el.addEventListener('error', onError);
-      tryNext();
+      for (const ext of AUDIO_EXTENSIONS) {
+        const probe = new Audio();
+        probe.preload = 'metadata';
+        probe.crossOrigin = 'anonymous';
+        const src = `${AUDIO_BASE}/${id}.${ext}`;
+
+        const onReady = (): void => finish(true, src);
+        const onError = (): void => {
+          errorCount += 1;
+          if (errorCount === AUDIO_EXTENSIONS.length) finish(false);
+        };
+
+        probe.addEventListener('canplaythrough', onReady);
+        probe.addEventListener('canplay', onReady);
+        probe.addEventListener('error', onError);
+        cleanups.push(() => {
+          probe.removeEventListener('canplaythrough', onReady);
+          probe.removeEventListener('canplay', onReady);
+          probe.removeEventListener('error', onError);
+          probe.src = ''; // abort any in-flight fetch for a losing candidate
+          probe.load();
+        });
+
+        probe.src = src;
+        probe.load();
+      }
     });
   }
 
@@ -338,6 +354,13 @@ class WebAudioSoundEngine implements SoundEngine {
   // --- music -------------------------------------------------------------
 
   private applyScene(scene: Scene): void {
+    // Guarded/idempotent: a returning visitor with sound already enabled
+    // (persisted from a prior session) may still be locked if their first
+    // interaction hasn't reached wireFirstGesture yet — retry here so the
+    // very next scene switch after any gesture recovers audio. All call
+    // sites into applyScene already guarantee `enabled === true`.
+    this.unlock();
+
     const trackId = SCENE_TRACKS[scene];
     const targetVolume = MUSIC_VOLUME * SCENE_GAIN[scene];
 
@@ -539,9 +562,15 @@ class WebAudioSoundEngine implements SoundEngine {
       this.unlock();
       window.removeEventListener('pointerdown', onFirst);
       window.removeEventListener('keydown', onFirst);
+      window.removeEventListener('wheel', onFirst);
+      window.removeEventListener('touchstart', onFirst);
     };
     window.addEventListener('pointerdown', onFirst, { passive: true });
     window.addEventListener('keydown', onFirst);
+    // A wheel-scrolling visitor never fires pointerdown/keydown — cover the
+    // scroll-only path too, plus touch, so the AudioContext still unlocks.
+    window.addEventListener('wheel', onFirst, { passive: true });
+    window.addEventListener('touchstart', onFirst, { passive: true });
   }
 
   /**

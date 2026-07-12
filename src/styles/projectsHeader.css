@@ -12,7 +12,12 @@
  */
 
 #header-center {
-  position: relative;
+  /* NOT position:relative — this div has no in-flow content (the back
+   * button is absolutely positioned), so as a flex item it collapses to
+   * 0 width and lands wherever the 3-item space-between row puts it.
+   * Leaving it un-positioned lets the back button's left/right em offsets
+   * below resolve against #header (position: fixed) instead, which is the
+   * full-width box the ground-truth measurements were taken against. */
   pointer-events: none;
 }
 
@@ -81,17 +86,30 @@
     transform 0.4s cubic-bezier(0.4, 0, 0.1, 1);
 }
 
+/* icon1 needs its own z-index: flex items with z-index:auto paint below a
+ * positioned sibling like the flood background, so without this the arrow
+ * would sit UNDER the hover flood and read as invisible even before it
+ * slides away. transition lives here (not just on the descendant `svg`
+ * selector below) because the hover rules transform THIS span, not the svg
+ * itself — a transition on the child never animates the parent's move. */
+#header-center-project-back-btn-svg {
+  position: relative;
+  z-index: 1;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.1, 1);
+}
+
 #header-center-project-back-btn-svg2 {
   position: absolute;
   right: 0;
   z-index: 1;
   transform: translate3d(1em, 0, 0);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.1, 1);
 }
 
 /* hover: the two arrows + text shift left, the flood sweeps up */
 @media (hover: hover) {
   #header-center-project-back-btn:hover {
-    color: var(--project-details-btn-text);
+    color: var(--project-details-btn-text-hover);
   }
 
   #header-center-project-back-btn:hover #project-details-header-back-background {
@@ -130,11 +148,14 @@
   }
 }
 
-/* mobile: square icon-only button anchored to the right */
+/* mobile: square icon-only button. Anchored just RIGHT OF THE LOGO (not the
+ * right edge): the sound/talk/menu cluster is too wide on small screens, so the
+ * old right-offset dropped the button on top of MENU. The logo→cluster gap is
+ * clear at every width in this range, so left-anchoring keeps it collision-free. */
 @media (max-width: 812px) {
   #header-center-project-back-btn {
-    right: calc(var(--base-padding-x) + 4em);
-    left: inherit;
+    left: calc(var(--base-padding-x) + 8em);
+    right: auto;
     width: 3.2em;
     padding: 0;
     justify-content: center;
@@ -146,7 +167,11 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  right: calc(var(--base-padding-x) + 22em);
+  /* reserve ~380px (base-padding-x + 27em) at desktop widths so this box
+   * always ends clear of the fixed header's sound/talk/menu cluster, which
+   * starts ~360px from the right edge at 1440px — was 22em (336px total),
+   * 24px short, so the text ran under the sound button. */
+  right: calc(var(--base-padding-x) + 27em);
   align-items: center;
   display: flex;
   gap: 0.625em;
@@ -157,7 +182,7 @@
   color: var(--project-details-highlight);
   margin: 0;
   pointer-events: none;
-  max-width: 22em;
+  max-width: 17em;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -185,6 +210,7 @@
   #header-center-project-back-btn,
   #project-details-header-back-background,
   #header-center-project-back-btn svg,
+  #header-center-project-back-btn-svg,
   #header-center-project-back-btn-text,
   #header-center-project-back-btn-svg2 {
     transition-duration: 0.01ms;

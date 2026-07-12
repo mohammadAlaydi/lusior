@@ -71,7 +71,7 @@ export class TunnelScene {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
   private readonly camera: THREE.PerspectiveCamera;
-  private readonly clock = new THREE.Clock();
+  private readonly timer = new THREE.Timer();
   private readonly reducedMotion: boolean;
   private readonly seeds: GemSeed[] = [];
 
@@ -92,6 +92,7 @@ export class TunnelScene {
   private resizeTimer = 0;
   private lastWidth = 0;
   private lastHeight = 0;
+  private lastPixelRatio = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -215,7 +216,7 @@ export class TunnelScene {
   private startLoop(): void {
     if (!this.started || this.running) return;
     this.running = true;
-    this.clock.getDelta(); // flush time spent paused so gems do not jump
+    this.timer.reset(); // flush time spent paused so gems do not jump
     this.rafId = requestAnimationFrame(this.loop);
   }
 
@@ -225,9 +226,10 @@ export class TunnelScene {
     cancelAnimationFrame(this.rafId);
   }
 
-  private readonly loop = (): void => {
+  private readonly loop = (now: number): void => {
     this.rafId = requestAnimationFrame(this.loop);
-    this.elapsed += Math.min(this.clock.getDelta(), MAX_FRAME_DELTA);
+    this.timer.update(now);
+    this.elapsed += Math.min(this.timer.getDelta(), MAX_FRAME_DELTA);
     this.actualProgress += (this.targetProgress - this.actualProgress) * SCRUB_SMOOTHING;
     this.renderFrame();
   };
@@ -291,9 +293,16 @@ export class TunnelScene {
     const rect = target.getBoundingClientRect();
     const width = Math.max(rect.width, 1);
     const height = Math.max(rect.height, 1);
-    if (width === this.lastWidth && height === this.lastHeight) return;
+    const pixelRatio = Math.min(window.devicePixelRatio, MAX_DPR);
+    const sizeChanged = width !== this.lastWidth || height !== this.lastHeight;
+    const pixelRatioChanged = pixelRatio !== this.lastPixelRatio;
+    if (!sizeChanged && !pixelRatioChanged) return;
     this.lastWidth = width;
     this.lastHeight = height;
+    if (pixelRatioChanged) {
+      this.lastPixelRatio = pixelRatio;
+      this.renderer.setPixelRatio(pixelRatio);
+    }
 
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();

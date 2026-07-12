@@ -1,0 +1,7 @@
+TALK: {"tag":"A","href":"mailto:hello@example.com","id":"talk-btn","cls":""}
+SOUND: {"tag":"BUTTON","id":"sound-btn","cls":"","aria":"Toggle sound","pressed":"false"}
+SOUND-AFTER: {"pressed":"true","cls":"is-sound-on","htmlClass":"lenis is-ready"}
+FOOTER-LINKS: [{"t":"Instagram","href":"https://www.instagram.com/","target":"_blank","rel":"noopener noreferrer"},{"t":"Twitter / X","href":"https://x.com/","target":"_blank","rel":"noopener noreferrer"},{"t":"LinkedIn","href":"https://www.linkedin.com/","target":"_blank","rel":"noopener noreferrer"},{"t":"GitHub","href":"https://github.com/","target":"_blank","rel":"noopener noreferrer"},{"t":"hello@example.com","href":"mailto:hello@example.com","target":null,"rel":null},{"t":"biz@example.com","href":"mailto:biz@example.com","target":null,"rel":null},{"t":"Experiments","href":"https://labs.example.com","target":"_blank","rel":"noopener noreferrer"}]
+MENU-LINKS: [{"t":"Home\n              Home","href":"#","cls":"header-menu-link --active"},{"t":"About us\n              About us","href":"#","cls":"header-menu-link"},{"t":"Projects\n              Projects","href":"#","cls":"header-menu-link"},{"t":"Contact\n              Contact","href":"#","cls":"header-menu-link"},{"t":"See all projects","href":"#featured","cls":"cta-pill"}]
+AFTER-PROJECTS-CLICK: {"url":"/","scrollY":3225,"menuStillOpen":false,"htmlClass":"is-ready lenis"} beforeY=0
+PROBLEMS: []

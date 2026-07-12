@@ -1,0 +1,7 @@
+--- click aurora, then meridian 120ms later (real tiles) ---
+[api] 200 /api/projects/aurora-bloom
+[TAP] second click, meridian tile found: true
+[TAP] history.pushState -> /projects/aurora-bloom
+[api] 200 /api/projects/meridian
+[TAP] history.pushState -> /projects/meridian
+STATE: {"path":"/projects/meridian","title":"Meridian","docTitle":"Meridian — Northwind Studio"}

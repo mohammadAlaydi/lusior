@@ -99,6 +99,12 @@
 
 #end-title {
   --font-size: 10vw;
+  /* inline-block (not the <a> default of inline) so that width: fit-content
+   * actually applies — an inline box containing block-level .end-title-line
+   * children has undefined sizing per spec, and Chrome was resolving it to
+   * ~the full section width, which is why the .end-deco strokes below used
+   * to stretch out to the viewport edge instead of hugging the title text. */
+  display: inline-block;
   position: relative;
   width: fit-content;
   margin: 0.4em auto auto;
@@ -139,26 +145,31 @@
  * real site per a user-supplied desktop screenshot); gsap owns the transform */
 .end-deco {
   position: absolute;
-  height: 0.07em;
+  height: 0.05em;
   background: var(--color-black);
   transform-origin: left;
   transform: scaleX(0);
 }
 
+/* Each title line is a 1em-tall box (line-height: 1) whose glyphs sit in a
+ * 0.95em top-aligned mask, baseline at ~0.885em. With zero gap between the
+ * stacked lines, "top" underlines sit ~0.07-0.08em below a line's mask
+ * (never touching its descenders or the next line's ascenders); "bottom"
+ * underlines go negative to hang below the whole (fit-content) title box. */
 #end-deco-top {
-  top: 0.85em;
+  top: 1.03em;
   left: 0.05em;
   width: calc(100% - 0.05em);
 }
 
 #end-deco-bl {
-  bottom: 0.12em;
+  bottom: -0.08em;
   left: 0.25em;
   width: 0.82em;
 }
 
 #end-deco-br {
-  bottom: 0.12em;
+  bottom: -0.08em;
   left: 1.78em;
   width: 2.45em;
 }

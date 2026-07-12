@@ -1,0 +1,128 @@
+meta:
+  product: "Northwind Studio"
+  version: 1
+  created: 2026-07-12
+  updated: 2026-07-12
+  owner: "studio"
+  # No destination connected yet — plan is destination-agnostic. If 2+
+  # destinations are ever targeted, ingest through a CDP (Segment/RudderStack)
+  # and fan out. Volume is tiny (marketing site), so any tool works.
+  destinations: []
+  naming: "object.action snake_case (greenfield default)"
+  # Newsletter email is collected by the API and stays server-side. It is
+  # NEVER sent to analytics — not in event properties, not as identity.
+  pii_policy: none
+  # Guard in the tracking module: skip all calls when
+  # localStorage.nw_internal === '1' (set on team machines).
+  internal_user_policy: exclude_by_flag
+
+entities:
+  user:
+    id_property: anonymous_id   # SDK-generated; no login exists
+    traits:
+      - name: first_seen_at
+        type: datetime
+        required: true
+        update: one-time
+      - name: has_subscribed_newsletter
+        type: boolean
+        required: false
+        update: on-change
+      - name: prefers_reduced_motion
+        type: boolean
+        required: false
+        update: on-change   # animation-heavy site — key UX segment
+
+# No group hierarchy — anonymous visitors only. No snapshot sync (no
+# server-side per-user state). Billing category investigated: no plans,
+# trials, or limits exist in this product.
+
+events:
+  # -- Core value: lead generation --
+  - name: newsletter.subscribed
+    category: core_value
+    description: Newsletter API returned 201 for a subscribe (success only)
+    properties:
+      - name: source
+        type: string
+        enum: [footer, menu]
+        required: true
+    expected_frequency: low
+
+  - name: newsletter.subscribe_failed
+    category: core_value
+    description: Subscribe attempt failed after passing local validation
+    properties:
+      - name: source
+        type: string
+        enum: [footer, menu]
+        required: true
+      - name: reason
+        type: string
+        enum: [invalid, rate_limited, server_error]
+        required: true
+    expected_frequency: low
+
+  - name: contact.clicked
+    category: core_value
+    description: LET'S TALK mailto engaged — the site's contact conversion
+    properties:
+      - name: source
+        type: string
+        enum: [header]
+        required: true
+    expected_frequency: low
+
+  # -- Core value: portfolio engagement --
+  - name: project.viewed
+    category: core_value
+    description: Project detail layer opened (any route into it)
+    properties:
+      - name: project_slug
+        type: string
+        required: true
+      - name: source
+        type: string
+        enum: [featured_grid, deep_link, next_advance, history]
+        required: true
+    expected_frequency: medium
+
+  - name: project.launch_clicked
+    category: core_value
+    description: Launch/visit CTA clicked on a project detail page
+    properties:
+      - name: project_slug
+        type: string
+        required: true
+      - name: is_internal
+        type: boolean
+        required: true
+    expected_frequency: low
+
+  - name: showreel.watched
+    category: core_value
+    description: Video overlay session ended (close/Esc); one event per watch
+    properties:
+      - name: watch_duration_seconds
+        type: integer
+        required: true
+      - name: completed
+        type: boolean
+        required: true
+    expected_frequency: low
+
+  # -- Experience adoption --
+  - name: sound.toggled
+    category: configuration
+    description: Sound engine toggled via header button
+    properties:
+      - name: enabled
+        type: boolean
+        required: true
+    expected_frequency: low
+
+# Deliberately NOT tracked (anti-patterns / noise for this product):
+# page views, scroll depth/section views, hover states, gallery wheel/drag
+# steps, menu link clicks, per-frame/per-input anything, form keystrokes,
+# next-ratio fill amounts. project.advanced_to_next was consolidated into
+# project.viewed{source: next_advance}.

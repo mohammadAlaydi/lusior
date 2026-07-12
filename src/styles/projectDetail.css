@@ -84,7 +84,10 @@ html:not(.is-project-details-active) #project-details {
     position: relative;
     top: 0;
     width: 100%;
-    padding-top: calc(var(--vh, 1vh) * 10);
+    /* Clear the fixed header (logo / back button / talk+menu pills) whatever
+     * the viewport height — a bare 10vh collapses on short/landscape phones and
+     * the title slid up under the header cluster. */
+    padding-top: max(calc(var(--vh, 1vh) * 10), calc(var(--base-padding-y) * 2 + var(--header-size) * 3.5));
     padding-bottom: 50px;
     transform: translateZ(0);
     min-width: inherit;
@@ -114,7 +117,7 @@ html:not(.is-project-details-active) #project-details {
 
 #project-details-left {
   float: left;
-  width: 60%;
+  width: 50%;
 }
 
 @media (max-width: 812px) {
@@ -125,9 +128,23 @@ html:not(.is-project-details-active) #project-details {
 
 #project-details-right {
   float: right;
-  width: 40%;
-  padding-left: 20%;
-  margin-top: 3em;
+  /* Content column ~2x the old 20% so SERVICES/CREDITS items (e.g.
+   * "Front-end Engineering") stop wrapping and the LAUNCH WEBSITE pill has
+   * room. left (50%) + right (50%) must total exactly 100% or the right
+   * float drops BELOW the description instead of sitting beside it. */
+  width: 50%;
+  padding-left: 10%;
+  /* Both floats start at the same top edge (no `clear` between them), so this
+   * margin alone is what clears the title above it. Title is font-size:4.5em
+   * * line-height:0.95 = 4.275em tall in the SAME em base (#project-details'
+   * clamp() — #project-details-left/-right never reset font-size), plus the
+   * tight line-height lets glyph descenders paint past that box. 3em
+   * undershot 4.275em, so SERVICES sat inside the title's descenders at wide
+   * viewports where the clamp() grows the base font-size (measured ~26px
+   * overlap at 1999px; 1440px clamps to the floor so it read fine). 4.75em
+   * keeps ~0.45em clearance at ANY width because it scales off the same
+   * base as the title. */
+  margin-top: 4.75em;
 }
 
 @media (max-width: 812px) {
@@ -168,6 +185,13 @@ html:not(.is-project-details-active) #project-details {
 #project-details-desc a,
 #project-details-side-list a {
   position: relative;
+}
+
+/* desc links stay inline within paragraph text; side-list links (the LINKS
+ * group's Instagram/Twitter-X/LinkedIn/GitHub items) are standalone rows,
+ * not an inline run — inline-block here had no wrap/gap between them, so
+ * they rendered concatenated onto one line ("InstagramTwitter / X..."). */
+#project-details-desc a {
   display: inline-block;
 }
 
@@ -201,6 +225,12 @@ html:not(.is-project-details-active) #project-details {
 }
 
 #project-details-side-list a {
+  /* Block row like every other .project-details-side-list-item (that class
+   * already gives it the SERVICES list's margin:0 / line-height:1.4 row
+   * rhythm) + fit-content so the hover ::after underline still hugs the link
+   * text instead of stretching the full column width. */
+  display: block;
+  width: fit-content;
   color: var(--project-details-text);
 }
 
@@ -253,6 +283,9 @@ html:not(.is-project-details-active) #project-details {
 #project-details-launch-cta {
   display: none;
   height: 3.375em;
+  /* breathing room above the pill so it doesn't crowd the last credits
+   * line sitting right above it (mobile overrides this to 4em below). */
+  margin-top: 1.75em;
   padding: 1em 1.5em 1em 1.125em;
   align-items: center;
   gap: 1.125em;
@@ -408,10 +441,21 @@ html:not(.is-project-details-active) #project-details {
 }
 
 @media (max-width: 812px) {
+  /* Mobile: the gallery is no longer an absolutely-positioned horizontal band
+   * that floats over the meta — it drops into normal flow directly below it so
+   * the whole detail layer reads as one vertical scroll. */
+  #project-details-items-wrapper {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    height: auto;
+  }
+
   #project-details-items-move-container {
     position: relative;
     padding-left: 0;
-    width: calc(100vw - var(--base-padding-x) * 2);
+    width: 100%;
     height: auto;
     white-space: normal;
     will-change: auto;
@@ -436,16 +480,34 @@ html:not(.is-project-details-active) #project-details {
 
 @media (max-width: 812px) {
   .project-details-item {
-    margin-left: var(--base-padding-x);
-    margin-top: 50px;
+    /* stack every block full-width; !important overrides the per-item inline
+     * width (e.g. 68em) / height (100%) the data layer sets for the desktop
+     * horizontal rail. */
+    display: block;
+    width: 100% !important;
+    height: auto !important;
+    margin-left: 0;
+    margin-top: 24px;
   }
 
   .project-details-item:first-child {
-    margin-left: var(--base-padding-x);
+    margin-left: 0;
+    margin-top: 0;
   }
 
   .project-details-item:last-child {
-    margin-bottom: 50px;
+    margin-right: 0;
+    margin-bottom: 40px;
+  }
+
+  /* Media blocks need an explicit height on mobile: with no fixed-height rail
+   * parent, height:100% would collapse the panels and let the photos/videos
+   * run their full intrinsic height. A capped viewport-relative band keeps the
+   * stack tidy. */
+  .project-details-item[data-kind='image'],
+  .project-details-item[data-kind='video'],
+  .project-details-item[data-kind='panel'] {
+    height: clamp(240px, 64vw, 440px) !important;
   }
 }
 
@@ -563,9 +625,19 @@ html:not(.is-project-details-active) #project-details {
 }
 
 @media (max-width: 812px) {
+  /* Mobile: the next-project preview stops being a full-height absolute overlay
+   * (its giant title used to sit at top:0 over the meta + header cluster) and
+   * becomes a tappable teaser card flowing at the very bottom of the scroll. */
   #project-details-preview {
-    left: var(--base-padding-x);
-    width: calc(100% - var(--base-padding-x) * 2);
+    position: relative;
+    left: auto;
+    top: auto;
+    width: 100%;
+    height: auto;
+    margin-top: 8px;
+    padding-top: 40px;
+    border-top: 1px solid color-mix(in srgb, var(--project-details-text) 22%, transparent);
+    cursor: pointer;
   }
 }
 
@@ -579,6 +651,7 @@ html:not(.is-project-details-active) #project-details {
 
 @media (max-width: 812px) {
   #project-details-preview-inner {
+    position: relative;
     height: auto;
     padding: calc(var(--vh, 1vh) * 2) 0;
   }
@@ -621,8 +694,23 @@ html:not(.is-project-details-active) #project-details {
   #project-details-preview-footer {
     position: relative;
     bottom: auto;
-    margin-top: calc(var(--vh, 1vh) * 5);
+    margin-top: calc(var(--vh, 1vh) * 2);
     width: 100%;
+  }
+
+  /* The bar is a desktop scrub affordance (fills as you over-scroll the rail);
+   * mobile advances by tapping the card, so drop the dead track and recolour
+   * the label/arrow off black so they read on the dark project background. */
+  #project-details-preview-footer-bar {
+    display: none;
+  }
+
+  #project-details-preview-footer-text {
+    color: var(--project-details-text);
+  }
+
+  #project-details-preview-footer-arrow {
+    color: var(--project-details-text);
   }
 }
 

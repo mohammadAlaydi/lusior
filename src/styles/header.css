@@ -179,18 +179,30 @@
 /* keep the pill row inside the viewport on very narrow screens */
 @media (max-width: 480px) {
   #header {
-    font-size: 0.6875rem;
+    font-size: 0.625rem;
   }
 
   #header-right {
-    gap: 0.35em;
+    gap: 0.25em;
+  }
+
+  #sound-btn {
+    width: 2.4em;
+    height: 2.4em;
+  }
+
+  #talk-btn,
+  #menu-btn {
+    font-size: 0.8em;
   }
 
   #talk-btn {
-    padding: 0 1em 0 1.2em;
+    padding: 0 0.9em 0 1.1em;
+    gap: 0.5em;
   }
 
   #menu-btn {
-    padding: 0 0.9em 0 1.2em;
+    padding: 0 0.8em 0 1.1em;
+    gap: 0.4em;
   }
 }

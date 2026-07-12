@@ -71,6 +71,8 @@ const tmpPos = new THREE.Vector3();
 const tmpQuat = new THREE.Quaternion();
 const tmpScale = new THREE.Vector3(1, 1, 1);
 const tmpVel = new THREE.Vector3();
+const tmpNdc = new THREE.Vector2();
+const tmpWorldPoint = new THREE.Vector3();
 
 export class HeroScene {
   private readonly container: HTMLElement;
@@ -96,8 +98,16 @@ export class HeroScene {
   private renderDirty = true;
   private lastWidth = 0;
   private lastHeight = 0;
+  private lastPixelRatio = 0;
   private resizeTimer = 0;
   private resizeObserver?: ResizeObserver;
+  private visibilityObserver?: IntersectionObserver;
+  /** Whether the container currently intersects the viewport (rAF self-gate). */
+  private intersecting = true;
+  /** True between webglcontextlost and webglcontextrestored. */
+  private contextLost = false;
+  /** Whether the rAF loop is currently scheduled. */
+  private running = false;
   private readonly abort = new AbortController();
   private readonly disposables: Array<{ dispose(): void }> = [];
   private readonly reducedMotion: boolean;
@@ -111,7 +121,11 @@ export class HeroScene {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.4;
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // three 0.184 deprecates PCFSoftShadowMap and force-downgrades it to
+    // PCFShadowMap at runtime (with a console warning) — set it directly to
+    // get the same result with zero warning. shadow.radius (below) still
+    // applies under plain PCF, so the softness is unchanged.
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
 
     const ink = new THREE.Color(0x09090b);
     this.renderer.setClearColor(ink);
@@ -133,14 +147,14 @@ export class HeroScene {
     this.spawnJacks();
     this.bindEvents();
 
-    this.lastTime = performance.now();
-    this.rafId = requestAnimationFrame(this.loop);
+    this.updateRunState();
   }
 
   dispose(): void {
     cancelAnimationFrame(this.rafId);
     window.clearTimeout(this.resizeTimer);
     this.resizeObserver?.disconnect();
+    this.visibilityObserver?.disconnect();
     this.abort.abort();
     for (const resource of this.disposables) {
       resource.dispose();
@@ -386,6 +400,7 @@ export class HeroScene {
       'pointermove',
       (event) => {
         const p = this.pointToWorld(event);
+        if (!p) return; // ray missed the ground plane — leave cursor as-is
         if (this.pointerActive) {
           this.cursor.copy(p);
         } else {
@@ -411,7 +426,8 @@ export class HeroScene {
     canvas.addEventListener(
       'pointerdown',
       (event) => {
-        this.burst(this.pointToWorld(event));
+        const p = this.pointToWorld(event);
+        if (p) this.burst(p);
       },
       { signal },
     );
@@ -423,18 +439,61 @@ export class HeroScene {
       this.resizeTimer = window.setTimeout(() => this.handleResize(), 150);
     });
     this.resizeObserver.observe(this.container);
+
+    // Self-gate the rAF loop: skip physics + rendering entirely while the
+    // hero is scrolled off-screen instead of running forever in the background.
+    this.visibilityObserver = new IntersectionObserver(
+      ([entry]) => {
+        this.intersecting = entry.isIntersecting;
+        this.updateRunState();
+      },
+      { threshold: 0 },
+    );
+    this.visibilityObserver.observe(this.container);
+
+    // WebGL context loss: prevent the default (which would otherwise
+    // permanently drop the context) and pause the loop. On restore, force a
+    // full size/pixel-ratio re-apply — the restored context has a fresh
+    // drawing buffer — and resume. A full GPU-resource rebuild of the
+    // geometries/materials/instanced meshes is out of scope here; three.js's
+    // own onContextRestore already reinitializes its internal GL state.
+    canvas.addEventListener(
+      'webglcontextlost',
+      (event) => {
+        event.preventDefault();
+        this.contextLost = true;
+        this.updateRunState();
+      },
+      { signal },
+    );
+
+    canvas.addEventListener(
+      'webglcontextrestored',
+      () => {
+        this.contextLost = false;
+        this.lastWidth = 0;
+        this.lastHeight = 0;
+        this.lastPixelRatio = 0;
+        this.handleResize();
+        this.updateRunState();
+      },
+      { signal },
+    );
   }
 
-  private pointToWorld(event: PointerEvent): THREE.Vector3 {
+  /**
+   * Returns the shared `tmpWorldPoint` scratch vector — callers must consume
+   * it synchronously — or null when the pointer ray doesn't hit the ground
+   * plane (e.g. a degenerate camera orientation).
+   */
+  private pointToWorld(event: PointerEvent): THREE.Vector3 | null {
     const rect = this.container.getBoundingClientRect();
-    const ndc = new THREE.Vector2(
+    tmpNdc.set(
       ((event.clientX - rect.left) / rect.width) * 2 - 1,
       -((event.clientY - rect.top) / rect.height) * 2 + 1,
     );
-    this.raycaster.setFromCamera(ndc, this.camera);
-    const point = new THREE.Vector3();
-    this.raycaster.ray.intersectPlane(this.groundPlane, point);
-    return point;
+    this.raycaster.setFromCamera(tmpNdc, this.camera);
+    return this.raycaster.ray.intersectPlane(this.groundPlane, tmpWorldPoint);
   }
 
   private burst(center: THREE.Vector3): void {
@@ -465,6 +524,27 @@ export class HeroScene {
   }
 
   // --- frame loop --------------------------------------------------------
+
+  /**
+   * Derives shouldRun from visibility + context-loss state and starts/stops
+   * the rAF loop to match. Resuming resets the physics accumulator and the
+   * frame-delta clock so a long pause doesn't burn through a burst of
+   * catch-up substeps.
+   */
+  private updateRunState(): void {
+    const shouldRun = this.intersecting && !this.contextLost;
+    if (shouldRun === this.running) return;
+    this.running = shouldRun;
+    if (shouldRun) {
+      this.accumulator = 0;
+      this.lastTime = performance.now();
+      this.renderDirty = true;
+      this.rafId = requestAnimationFrame(this.loop);
+    } else {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = 0;
+    }
+  }
 
   private readonly loop = (now: number): void => {
     const dt = Math.min((now - this.lastTime) / 1000, 0.1);
@@ -579,9 +659,16 @@ export class HeroScene {
     const rect = this.container.getBoundingClientRect();
     const width = Math.max(rect.width, 1);
     const height = Math.max(rect.height, 1);
-    if (width === this.lastWidth && height === this.lastHeight) return;
+    const pixelRatio = Math.min(window.devicePixelRatio, 2);
+    const sizeChanged = width !== this.lastWidth || height !== this.lastHeight;
+    const pixelRatioChanged = pixelRatio !== this.lastPixelRatio;
+    if (!sizeChanged && !pixelRatioChanged) return;
     this.lastWidth = width;
     this.lastHeight = height;
+    if (pixelRatioChanged) {
+      this.lastPixelRatio = pixelRatio;
+      this.renderer.setPixelRatio(pixelRatio);
+    }
     const aspect = width / height;
 
     this.worldHeight = WORLD_WIDTH / aspect;

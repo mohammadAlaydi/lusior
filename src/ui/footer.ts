@@ -1,5 +1,6 @@
 import gsap from 'gsap';
 import './scroll';
+import { isValidEmail, subscribeNewsletter } from './newsletterClient';
 
 /**
  * Footer choreography:
@@ -11,7 +12,6 @@ import './scroll';
  * Reduced motion skips every GSAP reveal and applies the static end state.
  */
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ADDRESS_SHIFT_EM = 0.4;
 
 export function setupFooterSection(scrollToTop: () => void): void {
@@ -39,24 +39,47 @@ function setupAddressStaircase(section: HTMLElement): void {
   });
 }
 
-/** Local-only newsletter form: validates the email and shows feedback. */
+/** Newsletter form: validates locally, then submits to the API. */
 function setupNewsletterForm(): void {
   const form = document.getElementById('footer-newsletter-form') as HTMLFormElement | null;
   const field = document.getElementById('footer-newsletter-input-field') as HTMLInputElement | null;
   const feedback = document.getElementById('footer-newsletter-feedback-message');
+  const submitButton = document.getElementById('footer-newsletter-input-arrow');
   if (!form || !field || !feedback) return;
 
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
+  let pending = false;
 
-    if (EMAIL_PATTERN.test(field.value.trim())) {
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (pending) return; // guard against double-submit while a request is in flight
+
+    const email = field.value.trim();
+    if (!isValidEmail(email)) {
+      feedback.classList.add('error');
+      feedback.textContent = 'Please enter a valid email.';
+      return;
+    }
+
+    pending = true;
+    form.setAttribute('data-pending', 'true');
+    field.disabled = true;
+    if (submitButton instanceof HTMLButtonElement) submitButton.disabled = true;
+
+    const result = await subscribeNewsletter(email);
+
+    if (result.ok) {
       feedback.classList.remove('error');
       feedback.textContent = 'Thanks — you’re on the list.';
       form.reset();
     } else {
       feedback.classList.add('error');
-      feedback.textContent = 'Please enter a valid email.';
+      feedback.textContent = result.message;
     }
+
+    pending = false;
+    form.removeAttribute('data-pending');
+    field.disabled = false;
+    if (submitButton instanceof HTMLButtonElement) submitButton.disabled = false;
   });
 }
 

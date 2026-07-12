@@ -1,0 +1,25 @@
+
+> lusion-recreation@1.0.0 build
+> tsc && vite build
+
+[36mvite v8.0.16 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...
+/fonts/Aeonik-Regular.woff2 referenced in /fonts/Aeonik-Regular.woff2 didn't resolve at build time, it will remain unchanged to be resolved at runtime
+
+/fonts/Aeonik-Medium.woff2 referenced in /fonts/Aeonik-Medium.woff2 didn't resolve at build time, it will remain unchanged to be resolved at runtime
+✓ 65 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                          37.54 kB │ gzip:   6.02 kB
+dist/assets/index-DujZyE8H.css           61.30 kB │ gzip:  10.68 kB
+dist/assets/TunnelScene-hdb22j_6.js       4.73 kB │ gzip:   2.00 kB │ map:    17.46 kB
+dist/assets/index-CmtYKf7T.js           199.50 kB │ gzip:  71.76 kB │ map:   851.15 kB
+dist/assets/three.module-BAw2QoL1.js    524.65 kB │ gzip: 131.96 kB │ map: 2,697.04 kB
+dist/assets/HeroScene-CiCDX8Td.js     2,249.80 kB │ gzip: 847.49 kB │ map: 2,473.11 kB
+
+[32m✓ built in 750ms[39m
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m

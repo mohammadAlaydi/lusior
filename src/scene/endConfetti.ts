@@ -54,6 +54,11 @@ const KEEPOUT_RADIUS_X = 0.275;
 const KEEPOUT_RADIUS_Y = 0.225;
 const KEEPOUT_QUOTA = 6;
 const KEEPOUT_MAX_SIZE = 18;
+/* Outside the hard keep-out, the size cap tapers back up to SIZE_MAX over this
+ * wider ring (in ellipse-radius multiples) instead of jumping straight to the
+ * uncapped range — without the taper, a ~50-70px shape can land immediately
+ * adjacent to the keep-out edge and read as a big smudge crowding the title. */
+const KEEPOUT_BUFFER_SCALE = 1.6;
 const SIZE_MIN = 10;
 const SIZE_MAX = 56;
 const SIZE_JUMBO_MAX = 72;
@@ -141,22 +146,23 @@ function sampleUnitY(rng: Rng): number {
   return Math.pow(rng(), BOTTOM_BIAS_EXPONENT);
 }
 
-function isInsideKeepOut(ux: number, uy: number): boolean {
+/** Normalized elliptical distance from the keep-out center: <1 = inside the
+ * hard keep-out, 1..KEEPOUT_BUFFER_SCALE = the size-taper ring, beyond that
+ * the field is at full size. */
+function keepOutDistance(ux: number, uy: number): number {
   const nx = (ux - 0.5) / KEEPOUT_RADIUS_X;
   const ny = (uy - 0.5) / KEEPOUT_RADIUS_Y;
-  return nx * nx + ny * ny < 1;
+  return Math.sqrt(nx * nx + ny * ny);
 }
 
-function createShape(rng: Rng, ux: number, uy: number, isClampedSmall: boolean): ConfettiShape {
+function createShape(rng: Rng, ux: number, uy: number, sizeCapPx: number): ConfettiShape {
   const jumboRoll = rng();
   const sizeRoll = rng();
   let size = SIZE_MIN + sizeRoll * (SIZE_MAX - SIZE_MIN);
   if (jumboRoll < JUMBO_CHANCE) {
     size = SIZE_MAX + sizeRoll * (SIZE_JUMBO_MAX - SIZE_MAX);
   }
-  if (isClampedSmall) {
-    size = Math.min(size, KEEPOUT_MAX_SIZE);
-  }
+  size = Math.min(size, sizeCapPx);
   return {
     ux,
     uy,
@@ -183,14 +189,20 @@ function createShapes(rng: Rng): ConfettiShape[] {
     tries += 1;
     const ux = sampleUnitX(rng);
     const uy = sampleUnitY(rng);
-    const inKeepOut = isInsideKeepOut(ux, uy);
+    const dist = keepOutDistance(ux, uy);
+    const inKeepOut = dist < 1;
     if (inKeepOut && keepOutUsed >= KEEPOUT_QUOTA) {
       continue; // rejection sampling keeps the title area mostly clear
     }
     if (inKeepOut) {
       keepOutUsed += 1;
     }
-    shapes.push(createShape(rng, ux, uy, inKeepOut));
+    const sizeCapPx = inKeepOut
+      ? KEEPOUT_MAX_SIZE
+      : dist < KEEPOUT_BUFFER_SCALE
+        ? KEEPOUT_MAX_SIZE + (SIZE_MAX - KEEPOUT_MAX_SIZE) * ((dist - 1) / (KEEPOUT_BUFFER_SCALE - 1))
+        : SIZE_JUMBO_MAX;
+    shapes.push(createShape(rng, ux, uy, sizeCapPx));
   }
   return shapes;
 }

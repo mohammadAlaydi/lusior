@@ -41,6 +41,15 @@ const MOBILE_MAX = 812;
 const NEXT_ADVANCE_DISTANCE = 1800;
 /** Pointer/touch drag distance (px) that fills `nextProjectRatio` on the footer. */
 const NEXT_DRAG_DISTANCE = 320;
+/** Idle gap (ms) after the last ratio-changing input before an abandoned
+ * mid-fill bar starts auto-decaying back toward 0. Must comfortably exceed the
+ * cadence of DISCRETE mouse-wheel notches (~150-350ms apart while actively
+ * scrolling) or deliberate scrollers can never accumulate the bar — 250ms made
+ * the fill unwinnable on notched wheels. */
+const NEXT_DECAY_IDLE_MS = 900;
+/** Time (ms) for a fully open bar (ratio 1) to auto-decay to 0 once idle;
+ * scaled by the ticker's real deltaTime so the rate holds at any frame rate. */
+const NEXT_DECAY_DURATION_MS = 1400;
 /** How close (px) the SMOOTHED translate must be to the end before the bar may
  * start filling — stops the advance firing while the gallery is still sliding. */
 const END_EPSILON = 6;
@@ -120,8 +129,11 @@ function buildLaunchCta(detail: ProjectDetail): string {
   if (!detail.launchUrl) return '';
   const label = escapeHtml(detail.launchLabel ?? 'Launch website');
   const href = safeUrl(detail.launchUrl);
+  // Internal ('/'-prefixed) targets navigate in-app (see the click-intercept
+  // in attachInteractions) — only external targets get a new tab.
+  const attrs = isInternalUrl(detail.launchUrl) ? '' : ' target="_blank" rel="noopener noreferrer"';
   return (
-    `<a id="project-details-launch-cta" href="${href}" target="_blank" rel="noopener">` +
+    `<a id="project-details-launch-cta" href="${href}"${attrs}>` +
     '<span id="project-details-launch-cta-dot" aria-hidden="true"></span>' +
     `<p id="project-details-launch-cta-text">${label}</p>` +
     `<span id="project-details-launch-cta-arrow" aria-hidden="true">${ARROW_SVG}</span>` +
@@ -133,8 +145,9 @@ function buildLaunchCtaMobile(detail: ProjectDetail): string {
   if (!detail.launchUrl) return '';
   const label = escapeHtml(detail.launchLabel ?? 'Launch website');
   const href = safeUrl(detail.launchUrl);
+  const attrs = isInternalUrl(detail.launchUrl) ? '' : ' target="_blank" rel="noopener noreferrer"';
   return (
-    `<a id="project-details-launch-cta-mobile" href="${href}" target="_blank" rel="noopener">` +
+    `<a id="project-details-launch-cta-mobile" href="${href}"${attrs}>` +
     '<span id="project-details-launch-cta-mobile-dot" aria-hidden="true"></span>' +
     `<p id="project-details-launch-cta-mobile-text">${label}</p>` +
     `<span id="project-details-launch-cta-mobile-arrow" aria-hidden="true">${ARROW_SVG}</span>` +
@@ -267,6 +280,15 @@ function safeUrl(value: string): string {
   }
 }
 
+/**
+ * True for our own root-relative routes ('/', '/projects/x', …) — never for
+ * protocol-relative URLs ('//host/...'), which are external. Drives whether a
+ * launch CTA opens in a new tab or navigates through the in-app router.
+ */
+function isInternalUrl(value: string): boolean {
+  return value.startsWith('/') && !value.startsWith('//');
+}
+
 /** Map a known side-list link name to a real external URL (no dead `#` tabs). */
 const SIDE_LIST_LINK_URLS: ReadonlyArray<[string, string]> = [
   ['Instagram', 'https://instagram.com'],
@@ -315,14 +337,19 @@ export function setupProjectDetail(deps: ProjectDetailDeps): ProjectDetailContro
   // so focus stays contained in the region. Restored exactly on close.
   let inertedChildren: HTMLElement[] = [];
 
-  /** Make every #ui child inert except #header and #project-details. */
+  /**
+   * Make every #ui child inert except #header, #header-menu and
+   * #project-details. #header-menu is a sibling of #header (not nested), so it
+   * must be exempted explicitly or the menu opens visually but is unclickable
+   * while a project is active.
+   */
   function applyInert(): void {
     const ui = document.getElementById('ui');
     if (!ui) return;
     inertedChildren = [];
     for (const child of Array.from(ui.children)) {
       if (!(child instanceof HTMLElement)) continue;
-      if (child.id === 'header' || child.id === 'project-details') continue;
+      if (child.id === 'header' || child.id === 'header-menu' || child.id === 'project-details') continue;
       child.inert = true;
       inertedChildren.push(child);
     }
@@ -572,12 +599,66 @@ function attachInteractions(args: InteractionDeps): () => void {
     cleanups.push(() => cta.removeEventListener('pointerenter', onEnter));
   }
 
+  // Internal ('/'-prefixed) launch URLs — currently only Northwind's, whose
+  // copy says the studio site IS this site — render with no target="_blank"
+  // (see buildLaunchCta/buildLaunchCtaMobile). Intercept their click and reuse
+  // the existing close path instead of a full reload; externals keep
+  // target="_blank" and are left to native browser handling.
+  const ctaAnchors = root.querySelectorAll<HTMLAnchorElement>(
+    '#project-details-launch-cta, #project-details-launch-cta-mobile',
+  );
+  for (const anchor of Array.from(ctaAnchors)) {
+    if (anchor.target === '_blank') continue; // external — native behaviour is correct
+    const onCtaClick = (event: MouseEvent): void => {
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      deps.onRequestClose();
+    };
+    anchor.addEventListener('click', onCtaClick);
+    cleanups.push(() => anchor.removeEventListener('click', onCtaClick));
+  }
+
   // On mobile (or reduced motion) we do NOT hijack — native vertical scroll
-  // handles the stacked layout. Just reveal everything (and play media) and bail.
+  // handles the stacked layout. Reveal everything (and play media) and bail.
   if (isMobile() || reduced || !moveContainer || !wrapper) {
     for (const item of items) {
       item.style.visibility = 'visible';
       void item.querySelector('video')?.play().catch(() => {});
+    }
+    // The next-project preview can't be scrubbed here (no scroll-hijack). On
+    // mobile the CSS reflows it into a teaser card at the bottom of the stack —
+    // make that card tap/keyboard operable so the advance still works. On a
+    // NON-mobile reduced-motion pass the preview is still an absolute overlay
+    // (top:0, full height), so keep it hidden exactly like drivePreview would,
+    // or its giant next-title covers the gallery.
+    const preview = root.querySelector<HTMLElement>('#project-details-preview');
+    if (preview) {
+      const nextSlug = getNext();
+      if (isMobile() && nextSlug) {
+        preview.setAttribute('role', 'link');
+        preview.setAttribute('aria-label', 'Go to next project');
+        preview.tabIndex = 0;
+        const go = (): void => {
+          deps.sound?.playUI('click');
+          deps.onRequestProject(nextSlug);
+        };
+        const onClick = (): void => go();
+        const onKey = (event: KeyboardEvent): void => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            go();
+          }
+        };
+        preview.addEventListener('click', onClick);
+        preview.addEventListener('keydown', onKey);
+        cleanups.push(() => {
+          preview.removeEventListener('click', onClick);
+          preview.removeEventListener('keydown', onKey);
+        });
+      } else if (!isMobile()) {
+        gsap.set(preview, { autoAlpha: 0 });
+      }
     }
     return () => cleanups.forEach((fn) => fn());
   }
@@ -589,6 +670,10 @@ function attachInteractions(args: InteractionDeps): () => void {
   let scrollX = 0; // current smoothed translate
   let targetX = 0; // wheel/drag target translate
   let maxScroll = 0;
+  // Swallow input for a beat after attach: trailing wheel momentum from the
+  // advance gesture on the PREVIOUS project otherwise lands here and opens
+  // the fresh gallery a few px pre-scrolled.
+  const inputReadyAt = performance.now() + 500;
   let nextRatio = 0; // 0..1 next-project advance
   let advanced = false; // guard double-fire
   let frozen = false; // set once an advance fires — no further input this layer
@@ -598,6 +683,7 @@ function attachInteractions(args: InteractionDeps): () => void {
   let revealedCount = 0; // stop the per-frame scan once every item is visible
   let lastDrivenRatio = -1; // drivePreview no-op guard
   let lastNextRatioWritten = -1; // only write --next-ratio on change
+  let lastRatioInputTs = performance.now(); // last ratio-changing input; drives idle auto-decay
 
   const setX = gsap.quickTo(moveContainer, 'x', { duration: 0.5, ease: 'power3.out' });
 
@@ -635,6 +721,7 @@ function attachInteractions(args: InteractionDeps): () => void {
 
   function addDelta(delta: number): void {
     if (frozen) return;
+    if (performance.now() < inputReadyAt) return;
     if (isMobile()) return; // native vertical scroll once the CSS stacks
     const room = maxScroll - targetX;
     if (delta > 0 && room <= 0.5) {
@@ -645,6 +732,7 @@ function attachInteractions(args: InteractionDeps): () => void {
       // immediately" bug). Once the bar has begun, let it run through.
       const visualAtEnd = -scrollX >= maxScroll - END_EPSILON;
       if (!visualAtEnd && nextRatio <= 0) return;
+      lastRatioInputTs = performance.now();
       applyNextRatio(nextRatio + delta / NEXT_ADVANCE_DISTANCE);
       return;
     }
@@ -652,6 +740,7 @@ function attachInteractions(args: InteractionDeps): () => void {
       // Reversing while the preview is partly open: drain the ratio first, then
       // spend any leftover negative delta on targetX so neither sticks half-open.
       const ratioDrain = nextRatio * NEXT_ADVANCE_DISTANCE;
+      lastRatioInputTs = performance.now();
       if (-delta >= ratioDrain) {
         const leftover = delta + ratioDrain; // still negative (or zero)
         applyNextRatio(0);
@@ -744,6 +833,7 @@ function attachInteractions(args: InteractionDeps): () => void {
     const fMove = (event: PointerEvent): void => {
       if (frozen || !footerDragging) return;
       const dx = event.clientX - footerStartX;
+      lastRatioInputTs = performance.now();
       applyNextRatio(footerStartRatio + dx / NEXT_DRAG_DISTANCE);
     };
     const fUp = (event: PointerEvent): void => {
@@ -797,11 +887,28 @@ function attachInteractions(args: InteractionDeps): () => void {
   wrapper.addEventListener('keydown', onKeyNav);
   cleanups.push(() => wrapper.removeEventListener('keydown', onKeyNav));
 
-  // ---- render loop (smooth translate + reveal + preview slide) ----
-  const tick = (): void => {
+  // ---- render loop (smooth translate + reveal + preview feedback + decay) ----
+  const tick = (_time: number, deltaTime: number): void => {
     scrollX += (-targetX - scrollX) * 0.12;
     setX(scrollX);
     revealVisible();
+    // Auto-decay: an abandoned mid-fill bar (user stopped scrolling with the
+    // preview partway open) drains back to 0 on its own instead of sticking
+    // half-open. Routed through applyNextRatio so the bar + --next-ratio stay
+    // in sync; only ever decreases, so it can't flip advanced/frozen or fire
+    // the advance itself (applyNextRatio also no-ops once frozen — belt and
+    // braces). deltaTime is the ticker's real ms-since-last-tick, so the
+    // drain holds ~NEXT_DECAY_DURATION_MS regardless of frame rate.
+    if (
+      !frozen &&
+      nextRatio > 0 &&
+      nextRatio < 1 &&
+      performance.now() - lastRatioInputTs > NEXT_DECAY_IDLE_MS
+    ) {
+      // Clamp the step: on a hitchy/low-FPS frame deltaTime can be hundreds of
+      // ms, and an unclamped drain would wipe most of the bar in one tick.
+      applyNextRatio(nextRatio - Math.min(deltaTime, 64) / NEXT_DECAY_DURATION_MS);
+    }
     // Skip the preview write entirely while it stays fully closed (0 -> 0).
     if (!(nextRatio === 0 && lastDrivenRatio === 0)) {
       drivePreview(root, nextRatio);
@@ -817,21 +924,23 @@ function attachInteractions(args: InteractionDeps): () => void {
   return () => cleanups.forEach((fn) => fn());
 }
 
-/** Slide `#project-details-preview` in from the right and dim the gallery. */
+/**
+ * Footer-strip-only overscroll feedback. On the reference, pulling past the
+ * gallery end reveals just the "Next" progress bar + label — not a big panel
+ * sliding over the gallery. `#project-details-preview-footer` has no
+ * visibility of its own, so revealing `#project-details-preview` (exactly as
+ * before: same ratio>0 threshold, same autoAlpha — still hidden and
+ * non-interactive over the gallery at rest) is what makes the footer strip
+ * appear, in its natural bottom-left resting spot since nothing ever
+ * transforms it. The giant `#project-details-preview-title` sibling is kept
+ * permanently hidden so it never pops/slides over the gallery either — the
+ * advance moment (ratio hits 1) is covered by the existing full-screen
+ * transition wipe before the next layer's fresh DOM replaces this one, so no
+ * panel choreography (or gallery dim/scale) is needed here at all.
+ */
 function drivePreview(root: HTMLElement, ratio: number): void {
   const preview = root.querySelector<HTMLElement>('#project-details-preview');
-  const gallery = root.querySelector<HTMLElement>('#project-details-items-wrapper');
-  if (preview) {
-    gsap.set(preview, {
-      xPercent: (1 - ratio) * 100,
-      autoAlpha: ratio > 0 ? 1 : 0,
-    });
-  }
-  if (gallery) {
-    gsap.set(gallery, {
-      opacity: 1 - ratio * 0.6,
-      scale: 1 - ratio * 0.04,
-      transformOrigin: '50% 50%',
-    });
-  }
+  if (preview) gsap.set(preview, { autoAlpha: ratio > 0 ? 1 : 0 });
+  const title = root.querySelector<HTMLElement>('#project-details-preview-title');
+  if (title) gsap.set(title, { autoAlpha: 0 });
 }
