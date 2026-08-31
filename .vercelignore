@@ -1,0 +1,32 @@
+# Local state and generated output
+.git/
+.vercel/
+.claude/
+.telemetry/
+.tmp/
+node_modules/
+dist/
+test-results/
+playwright-report/
+*.log
+*.tsbuildinfo
+
+# The Vercel target is the frontend-only Vite build. Keep the full-stack,
+# test, capture, and operator material in Git without uploading it to Vercel.
+.github/
+deploy/
+docs/
+harness/
+reference/
+scripts/
+server/
+tests/
+Dockerfile
+compose.yaml
+playwright.config.ts
+tsconfig.tools.json
+*.md
+
+# Deployment configuration must come from Vercel, never local env files.
+.env
+.env.*
