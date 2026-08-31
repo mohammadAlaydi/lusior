@@ -36,6 +36,11 @@ interface HealthStatus {
   status: 'ok';
 }
 
+interface ReadinessStatus {
+  status: 'ready';
+  submissions: 'writable';
+}
+
 /**
  * Assemble the API router. The repository is injected so routes have no direct
  * filesystem coupling (and tests can pass a fake).
@@ -50,6 +55,20 @@ export function createApiRouter(repo: SubmissionRepository): Router {
   router.get('/health', (_req: Request, res: Response<ApiResponse<HealthStatus>>): void => {
     res.json(ok({ status: 'ok' }));
   });
+
+  router.get(
+    '/ready',
+    async (_req: Request, res: Response<ApiResponse<ReadinessStatus>>): Promise<void> => {
+      try {
+        await repo.checkWritable();
+        res.json(ok({ status: 'ready', submissions: 'writable' }));
+      } catch {
+        // Keep host paths and filesystem details server-side. A 503 lets load
+        // balancers stop traffic while liveness (`/health`) remains healthy.
+        res.status(503).json(fail('Submission store unavailable'));
+      }
+    },
+  );
 
   router.get('/projects', (_req: Request, res: Response<ApiResponse<ProjectSummary[]>>): void => {
     res.json(ok(projectSummaries()));

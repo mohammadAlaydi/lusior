@@ -28,7 +28,7 @@ Layout:
     `#project-details-side-list` (`.75em`) with `.project-details-side-list-title`
     (uppercase, highlight colour) + `.project-details-side-list-item` groups; the
     2nd group wraps in `#project-details-side-list-links` (`margin-top:4em`). Below
-    it the **launch CTA** `#project-details-launch-cta`.
+    it the desktop `.project-details-launches` group.
 - **Horizontal media gallery** (`#project-details-items-wrapper` band +
   `#project-details-items-move-container`, `white-space:nowrap`, `padding-left:48em`).
   `.project-details-item` are `inline-block; vertical-align:top; margin-left:5em`
@@ -100,7 +100,7 @@ points (orchestrator adds them).
 
 ```html
 <!-- mount point in index.html (orchestrator) -->
-<div id="project-details" aria-hidden="true"></div>
+<div id="project-details" aria-hidden="true" data-lenis-prevent></div>
 <canvas id="transition-overlay" aria-hidden="true"></canvas>
 
 <!-- header cluster in index.html #header (orchestrator) -->
@@ -131,17 +131,18 @@ points (orchestrator adds them).
       </div>
       <div id="project-details-side-list-links">...second group...</div>
     </div>
-    <a id="project-details-launch-cta" href="{launchUrl}" target="_blank" rel="noopener">
-      <span id="project-details-launch-cta-dot" aria-hidden="true"></span>
-      <p id="project-details-launch-cta-text">{launchLabel}</p>
-      <span id="project-details-launch-cta-arrow" aria-hidden="true"><svg arrow/></span>
-    </a>
+    <div class="project-details-launches project-details-launches--desktop">
+      <a class="project-details-launch-cta" href="{launch.url}">
+        <span class="project-details-launch-cta-dot" aria-hidden="true"></span>
+        <span class="project-details-launch-cta-text">{launch.label}</span>
+        <span class="project-details-launch-cta-arrow" aria-hidden="true"><svg arrow/></span>
+      </a>
+      ...one link per launches[] entry
+    </div>
   </div>
-  <a id="project-details-launch-cta-mobile" href="{launchUrl}" target="_blank" rel="noopener">
-    <span id="project-details-launch-cta-mobile-dot"></span>
-    <p id="project-details-launch-cta-mobile-text">{launchLabel}</p>
-    <span id="project-details-launch-cta-mobile-arrow"><svg/></span>
-  </a>
+  <div class="project-details-launches project-details-launches--mobile">
+    ...the same direct destinations for the responsive layout
+  </div>
 </div>
 
 <div id="project-details-items-wrapper">
@@ -166,9 +167,9 @@ points (orchestrator adds them).
 </div>
 ```
 
-`#project-details.has-cta` is set when `launchUrl` exists (CSS reveals the CTA).
+`#project-details.has-ctas` is set when `launches[]` has entries (CSS reveals the appropriate group).
 `.project-details-item` start `visibility:hidden`; logic agent reveals them as they
-enter. `#project-details-launch-cta` dot floods `scale(26)` on hover (matches
+enter. `.project-details-launch-cta` dot floods `scale(26)` on hover (matches
 extracted CSS / `.cta-pill`).
 
 Theme injection: logic agent sets these on `#project-details` (or `:root` while
@@ -262,7 +263,7 @@ export function setupRouter(deps: {
    pointer-drag while open; map to `translateX` of `#project-details-items-move-container`,
    clamped `[0, maxScroll]` where `maxScroll = scrollWidth - viewport`. Smooth with a
    lerp/`gsap.quickTo`. Reveal `.project-details-item` (`visibility`, subtle fade/slide)
-   as they enter view. Mobile (<=812px): native vertical scroll instead (no JS hijack).
+   as they enter view. Responsive layout (<=812px): native vertical scroll instead (no JS hijack).
 3. **Next-project advance**: once at `maxScroll`, extra forward delta accumulates into
    `nextProjectRatio` (0->1, also draggable via the preview/footer). Drive:
    `#project-details-preview` slide-in from the right, `-bar-inner` `scaleX` =

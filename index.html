@@ -3,21 +3,34 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Northwind Studio — 3D visual storytelling for the web</title>
+    <title>Reevez Studio — AI products, immersive web and automation</title>
     <meta
       name="description"
-      content="A technical study recreating the lusion.co hero section: Three.js, physics, and motion."
+      content="Reevez designs and builds AI products, immersive websites and automation systems for ambitious teams."
     />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://reevez.com/" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="theme-color" content="#0b0c10" />
-    <meta property="og:title" content="Northwind Studio — 3D visual storytelling for the web" />
+    <meta property="og:title" content="Reevez Studio — AI products, immersive web and automation" />
     <meta
       property="og:description"
-      content="A technical study recreating the lusion.co hero section: Three.js, physics, and motion."
+      content="Reevez designs and builds AI products, immersive websites and automation systems for ambitious teams."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/featured/p2.jpg" />
+    <meta property="og:site_name" content="Reevez Studio" />
+    <meta property="og:url" content="https://reevez.com/" />
+    <meta property="og:image" content="https://reevez.com/og/reevez.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Reevez Studio" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Reevez Studio — AI products, immersive web and automation" />
+    <meta
+      name="twitter:description"
+      content="Reevez designs and builds AI products, immersive websites and automation systems for ambitious teams."
+    />
+    <meta name="twitter:image" content="https://reevez.com/og/reevez.jpg" />
     <link rel="preload" href="/fonts/Aspekta-400.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/Aspekta-500.woff2" as="font" type="font/woff2" crossorigin />
   </head>
@@ -26,10 +39,10 @@
 
     <div id="ui">
       <header id="header">
-        <a id="logo" href="/" aria-label="Home">LUSION</a>
+        <a id="logo" href="/" aria-label="Reevez home">REEVEZ</a>
 
         <div id="header-center">
-          <button id="header-center-project-back-btn" aria-label="Back to projects">
+          <button id="header-center-project-back-btn" aria-label="Back to projects" aria-hidden="true">
             <span id="project-details-header-back-background" aria-hidden="true"></span>
             <span id="header-center-project-back-btn-svg" aria-hidden="true">
               <svg viewBox="0 0 16 16" fill="none"><path d="M14 8H3M7 3.5 2.5 8 7 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
@@ -47,7 +60,7 @@
             <span id="sound-line"></span>
           </button>
 
-          <a id="talk-btn" href="mailto:hello@example.com">
+          <a id="talk-btn" href="mailto:contact@reevez.com">
             <span class="talk-arrow" aria-hidden="true">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path
@@ -72,7 +85,7 @@
 
       <div id="header-menu" aria-hidden="true">
         <nav id="header-menu-links" aria-label="Menu">
-          <a class="header-menu-link --active" href="#" aria-current="page">
+          <a class="header-menu-link --active" href="#hero" aria-current="page">
             <span class="header-menu-link-background" aria-hidden="true"></span>
             <span class="header-menu-link-inner">
               <span class="header-menu-link-text">Home</span>
@@ -82,7 +95,7 @@
               <svg viewBox="0 0 16 16" fill="none"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
             </span>
           </a>
-          <a class="header-menu-link" href="#">
+          <a class="header-menu-link" href="#goal">
             <span class="header-menu-link-background" aria-hidden="true"></span>
             <span class="header-menu-link-inner">
               <span class="header-menu-link-text">About us</span>
@@ -92,7 +105,7 @@
               <svg viewBox="0 0 16 16" fill="none"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
             </span>
           </a>
-          <a class="header-menu-link" href="#">
+          <a class="header-menu-link" href="#featured">
             <span class="header-menu-link-background" aria-hidden="true"></span>
             <span class="header-menu-link-inner">
               <span class="header-menu-link-text">Projects</span>
@@ -102,7 +115,7 @@
               <svg viewBox="0 0 16 16" fill="none"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
             </span>
           </a>
-          <a class="header-menu-link" href="#">
+          <a class="header-menu-link" href="#footer">
             <span class="header-menu-link-background" aria-hidden="true"></span>
             <span class="header-menu-link-inner">
               <span class="header-menu-link-text">Contact</span>
@@ -137,17 +150,17 @@
           <span id="header-menu-talk-icon" aria-hidden="true">
             <svg viewBox="0 0 16 16" fill="none"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
           </span>
-          <a class="header-menu-talk-link" href="mailto:hello@example.com" aria-label="Email us"></a>
+          <a class="header-menu-talk-link" href="mailto:contact@reevez.com" aria-label="Email Reevez"></a>
         </div>
 
-        <a id="header-menu-labs" href="#">
+        <a id="header-menu-labs" href="https://reevez.com/case-studies" target="_blank" rel="noopener noreferrer">
           <span id="header-menu-labs-inner">
             <span id="header-menu-labs-lucy" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" /><circle cx="9" cy="10" r="1.2" fill="currentColor" /><circle cx="15" cy="10" r="1.2" fill="currentColor" /><path d="M8.5 14.5c1 1.2 2.2 1.8 3.5 1.8s2.5-.6 3.5-1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
             </span>
             <span id="header-menu-labs-texts">
-              <span id="header-menu-labs-text">LABS</span>
-              <span id="header-menu-labs-text-clone" aria-hidden="true">LABS</span>
+              <span id="header-menu-labs-text">CASE STUDIES</span>
+              <span id="header-menu-labs-text-clone" aria-hidden="true">CASE STUDIES</span>
             </span>
             <span id="header-menu-labs-arrow" aria-hidden="true">
               <svg viewBox="0 0 16 16" fill="none"><path d="M3 13 13 3M5 3h8v8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
@@ -162,8 +175,8 @@
       <main>
         <section id="hero" class="section" aria-labelledby="hero-title">
           <h1 id="hero-title">
-            We create 3D visual storytelling and interactive web experiences that help brands
-            stand out
+            We build AI products, immersive websites and automation systems that make ambitious
+            businesses impossible to ignore
           </h1>
 
           <div id="hero-visual">
@@ -227,9 +240,9 @@
 
           <div id="reel-content">
             <p id="reel-desc">
-              Design, motion, 3D and engineering combined into digital experiences that feel
-              striking on the surface and seamless underneath — from campaign launches to
-              immersive brand worlds built to invite interaction.
+              Product strategy, motion, 3D and engineering combined into digital experiences that
+              feel striking on the surface and dependable underneath — from operational platforms
+              to immersive brand worlds built to invite interaction.
             </p>
             <a id="reel-cta" href="#reel">
               <span id="reel-cta-dot" aria-hidden="true"></span>
@@ -273,7 +286,7 @@
             </div>
             <div id="reel-frame">
               <div id="reel-media">
-                <video id="reel-video" src="/reel/desktop.mp4" muted loop playsinline preload="auto" hidden></video>
+                <video id="reel-video" data-src="/reel/desktop.mp4" muted loop playsinline preload="none" hidden></video>
                 <div id="reel-placeholder" aria-hidden="true"></div>
                 <div id="reel-tint" aria-hidden="true"></div>
               </div>
@@ -289,6 +302,9 @@
                 </button>
                 <span class="reel-overlay-word" aria-hidden="true">Reel</span>
               </div>
+              <button id="reel-pause" type="button" aria-pressed="false">
+                Pause showreel
+              </button>
             </div>
           </div>
         </section>
@@ -297,17 +313,17 @@
           <div id="featured-head">
             <h2 id="featured-title">Selected Work</h2>
             <p id="featured-disclaimer">
-              A selection of recent collaborations across brand, 3D, motion and interactive web.
+              Real products and platforms shaped through design, engineering and close collaboration.
             </p>
           </div>
 
           <div id="featured-grid">
-            <a class="project-item" href="/projects/aurora-bloom" data-slug="aurora-bloom" style="--accent: #2b3afb" aria-label="Aurora Bloom — placeholder project">
+            <a class="project-item" href="/projects/magic-stamp" data-slug="magic-stamp" style="--accent: #e85d3f" aria-label="Magic Stamp — Product, Mobile and Loyalty">
               <div class="project-item-main">
-                <div class="project-item-media" style="background-image: url('/featured/p1.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
+                <div class="project-item-media" style="background-image: url('/media/magic-stamp/thumb.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
               </div>
               <div class="project-item-footer">
-                <div class="project-item-line-1">Concept • Web • Design • 3D</div>
+                <div class="project-item-line-1">Product • Mobile • Loyalty</div>
                 <div class="project-item-line-2">
                   <span class="project-item-line-2-inner">
                     <span class="project-item-line-2-icon" aria-hidden="true">
@@ -315,18 +331,18 @@
                         <path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                       </svg>
                     </span>
-                    <span class="project-item-name">Aurora Bloom</span>
+                    <span class="project-item-name">Magic Stamp</span>
                   </span>
                 </div>
               </div>
             </a>
 
-            <a class="project-item" href="/projects/meridian" data-slug="meridian" style="--accent: #8832f7" aria-label="Meridian — placeholder project">
+            <a class="project-item" href="/projects/rahmet-ihsan" data-slug="rahmet-ihsan" style="--accent: #5fbf8b" aria-label="Rahmet Ihsan — Web, Payments and Impact">
               <div class="project-item-main">
-                <div class="project-item-media" style="background-image: url('/featured/p2.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
+                <div class="project-item-media" style="background-image: url('/media/rahmet-ihsan/thumb.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
               </div>
               <div class="project-item-footer">
-                <div class="project-item-line-1">Web • Design • Development • Immersive</div>
+                <div class="project-item-line-1">Web • Payments • Impact</div>
                 <div class="project-item-line-2">
                   <span class="project-item-line-2-inner">
                     <span class="project-item-line-2-icon" aria-hidden="true">
@@ -334,18 +350,18 @@
                         <path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                       </svg>
                     </span>
-                    <span class="project-item-name">Meridian</span>
+                    <span class="project-item-name">Rahmet Ihsan</span>
                   </span>
                 </div>
               </div>
             </a>
 
-            <a class="project-item" href="/projects/continuum" data-slug="continuum" style="--accent: #ff4c41" aria-label="Continuum — placeholder project">
+            <a class="project-item" href="/projects/envaglo" data-slug="envaglo" style="--accent: #f16332" aria-label="Envaglo — SaaS, Analytics and ERP">
               <div class="project-item-main">
-                <div class="project-item-media" style="background-image: url('/featured/p3.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
+                <div class="project-item-media" style="background-image: url('/media/envaglo/thumb.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
               </div>
               <div class="project-item-footer">
-                <div class="project-item-line-1">3D • WebGL • Development</div>
+                <div class="project-item-line-1">SaaS • Analytics • ERP</div>
                 <div class="project-item-line-2">
                   <span class="project-item-line-2-inner">
                     <span class="project-item-line-2-icon" aria-hidden="true">
@@ -353,18 +369,18 @@
                         <path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                       </svg>
                     </span>
-                    <span class="project-item-name">Continuum</span>
+                    <span class="project-item-name">Envaglo</span>
                   </span>
                 </div>
               </div>
             </a>
 
-            <a class="project-item" href="/projects/halcyon" data-slug="halcyon" style="--accent: #14b8a6" aria-label="Halcyon — placeholder project">
+            <a class="project-item" href="/projects/mawared" data-slug="mawared" style="--accent: #c99b52" aria-label="Mawared — Platform, Workforce and Mobile">
               <div class="project-item-main">
-                <div class="project-item-media" style="background-image: url('/featured/p4.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
+                <div class="project-item-media" style="background-image: url('/media/mawared/thumb.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
               </div>
               <div class="project-item-footer">
-                <div class="project-item-line-1">Web • Design • Motion</div>
+                <div class="project-item-line-1">Platform • Workforce • Mobile</div>
                 <div class="project-item-line-2">
                   <span class="project-item-line-2-inner">
                     <span class="project-item-line-2-icon" aria-hidden="true">
@@ -372,18 +388,18 @@
                         <path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                       </svg>
                     </span>
-                    <span class="project-item-name">Halcyon</span>
+                    <span class="project-item-name">Mawared</span>
                   </span>
                 </div>
               </div>
             </a>
 
-            <a class="project-item" href="/projects/lumen-field" data-slug="lumen-field" style="--accent: #f59e0b" aria-label="Lumen Field — placeholder project">
+            <a class="project-item" href="/projects/mywill" data-slug="mywill" style="--accent: #9b6ef3" aria-label="MyWill — App, Legal Tech and Security">
               <div class="project-item-main">
-                <div class="project-item-media" style="background-image: url('/featured/p5.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
+                <div class="project-item-media" style="background-image: url('/media/mywill/thumb.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
               </div>
               <div class="project-item-footer">
-                <div class="project-item-line-1">Film • 3D • Animation</div>
+                <div class="project-item-line-1">App • Legal Tech • Security</div>
                 <div class="project-item-line-2">
                   <span class="project-item-line-2-inner">
                     <span class="project-item-line-2-icon" aria-hidden="true">
@@ -391,18 +407,18 @@
                         <path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                       </svg>
                     </span>
-                    <span class="project-item-name">Lumen Field</span>
+                    <span class="project-item-name">MyWill</span>
                   </span>
                 </div>
               </div>
             </a>
 
-            <a class="project-item" href="/projects/northwind" data-slug="northwind" style="--accent: #3ddc84" aria-label="Northwind — placeholder project">
+            <a class="project-item" href="/projects/paligram" data-slug="paligram" style="--accent: #efbd32" aria-label="Paligram — Messaging, Social and Mobile">
               <div class="project-item-main">
-                <div class="project-item-media" style="background-image: url('/featured/p6.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
+                <div class="project-item-media" style="background-image: url('/media/paligram/thumb.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
               </div>
               <div class="project-item-footer">
-                <div class="project-item-line-1">Web • Development • Brand</div>
+                <div class="project-item-line-1">Messaging • Social • Mobile</div>
                 <div class="project-item-line-2">
                   <span class="project-item-line-2-inner">
                     <span class="project-item-line-2-icon" aria-hidden="true">
@@ -410,16 +426,35 @@
                         <path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                       </svg>
                     </span>
-                    <span class="project-item-name">Northwind</span>
+                    <span class="project-item-name">Paligram</span>
+                  </span>
+                </div>
+              </div>
+            </a>
+
+            <a class="project-item" href="/projects/reevez" data-slug="reevez" style="--accent: #62d8ff" aria-label="Reevez — Studio, AI and Automation">
+              <div class="project-item-main">
+                <div class="project-item-media" style="background-image: url('/media/reevez/thumb.jpg'); background-size: cover; background-position: center" aria-hidden="true"></div>
+              </div>
+              <div class="project-item-footer">
+                <div class="project-item-line-1">Studio • AI • Automation</div>
+                <div class="project-item-line-2">
+                  <span class="project-item-line-2-inner">
+                    <span class="project-item-line-2-icon" aria-hidden="true">
+                      <svg viewBox="0 0 16 16" fill="none">
+                        <path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </span>
+                    <span class="project-item-name">Reevez</span>
                   </span>
                 </div>
               </div>
             </a>
           </div>
 
-          <a id="featured-cta" class="cta-pill" href="#featured">
+          <a id="featured-cta" class="cta-pill" href="https://reevez.com/case-studies" target="_blank" rel="noopener noreferrer">
             <span class="cta-pill__dot" aria-hidden="true"></span>
-            <span class="cta-pill__text">See all projects</span>
+            <span class="cta-pill__text">Read our case studies</span>
             <span class="cta-pill__arrow" aria-hidden="true">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M2 8h11M9 3.5 13.5 8 9 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
@@ -479,13 +514,13 @@
 
               <div id="goal-texts">
                 <p class="goal-texts-paragraph">
-                  We treat curiosity as a discipline. Every build starts with a question — what if
-                  this surface could breathe? — and only ships once the answer feels effortless.
+                  We treat curiosity as a discipline. Every build starts with the outcome, then we
+                  make the interface, motion and system underneath feel like one coherent idea.
                 </p>
                 <p class="goal-texts-paragraph">
-                  Craft is the quiet half of the work. We obsess over frame budgets, easing curves
-                  and the half-second of delight nobody can quite explain, because that is where
-                  memory lives.
+                  Craft is the quiet half of the work. We obsess over frame budgets, failure modes
+                  and the half-second of delight nobody can quite explain, because memorable work
+                  has to be reliable as well as beautiful.
                 </p>
               </div>
 
@@ -531,7 +566,7 @@
 
             <div id="end-content">
               <p id="end-subtitle">Ready to bring a bold idea to life?</p>
-              <a id="end-title" href="mailto:hello@example.com">
+               <a id="end-title" href="mailto:contact@reevez.com">
                 <span class="end-title-line"><span class="end-title-text">Let’s work</span></span>
                 <span class="end-title-line"><span class="end-title-text">together!</span></span>
                 <span class="end-deco" id="end-deco-top" aria-hidden="true"></span>
@@ -560,36 +595,36 @@
         <div id="footer-middle">
           <div id="footer-middle-contact">
             <address id="footer-contact-address">
-              <div class="footer-address-line-wrapper">Studio Northwind</div>
-              <div class="footer-address-line-wrapper">42 Harbor Lane</div>
-              <div class="footer-address-line-wrapper">Rotterdam, NL</div>
+              <div class="footer-address-line-wrapper">Reevez</div>
+              <div class="footer-address-line-wrapper">AI Automation Studio</div>
+              <div class="footer-address-line-wrapper">Working worldwide</div>
             </address>
 
             <div id="footer-contact-socials">
               <div class="footer-socials-wrapper">
-                <a class="footer-socials-line-wrapper" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer">
+                <a class="footer-socials-line-wrapper" href="https://instagram.com/reevez_business" target="_blank" rel="noopener noreferrer">
                   <svg class="footer-socials-line-svg" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                     <path d="M8 13.5V2.5M3.5 7 8 2.5 12.5 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                   <p class="footer-socials-text">Instagram</p>
                 </a>
-                <a class="footer-socials-line-wrapper" href="https://x.com/" target="_blank" rel="noopener noreferrer">
+                <a class="footer-socials-line-wrapper" href="https://x.com/reevez_business" target="_blank" rel="noopener noreferrer">
                   <svg class="footer-socials-line-svg" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                     <path d="M8 13.5V2.5M3.5 7 8 2.5 12.5 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                   <p class="footer-socials-text">Twitter / X</p>
                 </a>
-                <a class="footer-socials-line-wrapper" href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer">
+                <a class="footer-socials-line-wrapper" href="https://www.linkedin.com/company/reevezai" target="_blank" rel="noopener noreferrer">
                   <svg class="footer-socials-line-svg" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                     <path d="M8 13.5V2.5M3.5 7 8 2.5 12.5 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                   <p class="footer-socials-text">LinkedIn</p>
                 </a>
-                <a class="footer-socials-line-wrapper" href="https://github.com/" target="_blank" rel="noopener noreferrer">
+                <a class="footer-socials-line-wrapper" href="https://reevez.com/case-studies" target="_blank" rel="noopener noreferrer">
                   <svg class="footer-socials-line-svg" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                     <path d="M8 13.5V2.5M3.5 7 8 2.5 12.5 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
-                  <p class="footer-socials-text">GitHub</p>
+                  <p class="footer-socials-text">Case Studies</p>
                 </a>
               </div>
             </div>
@@ -597,14 +632,14 @@
             <div id="footer-contact-enquires">
               <div class="footer-contact-label">New enquiries</div>
               <div class="footer-enquires-link-wrapper">
-                <a id="footer-enquires-link" href="mailto:hello@example.com">hello@example.com</a>
+                <a id="footer-enquires-link" href="mailto:contact@reevez.com">contact@reevez.com</a>
               </div>
             </div>
 
             <div id="footer-contact-business">
               <div class="footer-contact-label">Business</div>
               <div class="footer-business-link-wrapper">
-                <a id="footer-business-link" href="mailto:biz@example.com">biz@example.com</a>
+                <a id="footer-business-link" href="mailto:contact@reevez.com">contact@reevez.com</a>
               </div>
             </div>
           </div>
@@ -639,10 +674,10 @@
 
         <div id="footer-bottom">
           <div id="footer-bottom-copyright">
-            <span class="footer-bottom-reveal">© 2026 Studio Northwind</span>
+            <span class="footer-bottom-reveal">© 2026 Reevez</span>
           </div>
-          <a id="footer-bottom-labs" href="https://labs.example.com" target="_blank" rel="noopener noreferrer">
-            <span class="footer-bottom-reveal">Experiments</span>
+          <a id="footer-bottom-labs" href="https://reevez.com/case-studies" target="_blank" rel="noopener noreferrer">
+            <span class="footer-bottom-reveal">Case studies</span>
           </a>
           <div id="footer-bottom-tagline">
             <span class="footer-bottom-reveal">Made with curiosity</span>
@@ -690,17 +725,17 @@
 
       <!-- Per-project themed detail layer; built from data by projectDetail.ts.
            Inside #ui so the fixed header (z-50) stays above it (z-40). -->
-      <div id="project-details" role="region" aria-hidden="true"></div>
+      <div id="project-details" role="region" aria-hidden="true" data-lenis-prevent></div>
     </div>
 
     <!-- Full-screen page-transition wipe (canvas, drawn by transition.ts). -->
     <canvas id="transition-overlay" aria-hidden="true"></canvas>
 
-    <div id="video-overlay" role="dialog" aria-label="Showreel video player" aria-hidden="true" tabindex="-1">
+    <div id="video-overlay" role="dialog" aria-modal="true" aria-label="Showreel video player" aria-hidden="true" tabindex="-1">
       <video id="video-overlay-video" src="/reel/desktop.mp4" playsinline preload="none"></video>
 
       <div id="video-overlay-fallback" hidden>
-        <span id="video-overlay-fallback-note">Showreel placeholder — add /public/reel/desktop.mp4</span>
+        <span id="video-overlay-fallback-note">Showreel unavailable</span>
       </div>
 
       <div id="video-overlay__controls">

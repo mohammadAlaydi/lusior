@@ -1,5 +1,5 @@
-/* Featured projects — a two-column editorial project list. Layout metrics
- * follow the reference's grid; copy and media are original placeholders. */
+/* Featured projects — a two-column editorial list using the production case
+ * study copy and media from the shared project contract. */
 #featured {
   position: relative;
   z-index: 1;
@@ -84,6 +84,16 @@
   background: var(--color-ink);
 }
 
+/* The main element remains available to the scroll-bend transform. This inner
+   surface is the independent 3D plane used only by fine-pointer devices. */
+.project-item-depth {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
 /* placeholder artwork: a soft accent-tinted gradient field with a slow drift.
    No zoom — the reference hover is a blur crossfade into the hover video
    (filter is gsap-driven in featured.ts). */
@@ -94,6 +104,59 @@
     radial-gradient(120% 140% at 20% 0%, var(--accent, #2b3afb) 0%, transparent 55%),
     radial-gradient(140% 150% at 90% 100%, #11163a 0%, transparent 60%),
     linear-gradient(160deg, #0d0e13 10%, #1a1d29 52%, #0d0e13 92%);
+  will-change: transform, filter;
+}
+
+.project-item-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 350ms ease;
+}
+
+.project-item.is-video-active .project-item-video {
+  opacity: 1;
+}
+
+.project-item-glare {
+  --glare-x: 50%;
+  --glare-y: 50%;
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(
+      circle at var(--glare-x) var(--glare-y),
+      rgba(255, 255, 255, 0.22) 0%,
+      rgba(230, 238, 255, 0.08) 18%,
+      transparent 46%
+    ),
+    linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+  mix-blend-mode: screen;
+  transition: opacity 300ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .project-item-main {
+    perspective: 900px;
+  }
+
+  .project-item.is-depth-active .project-item-glare {
+    opacity: 1;
+  }
+
+  /* Focus has a stable depth cue without pretending that a keyboard has a
+     pointer position. It keeps the title readable and the outline untouched. */
+  .project-item.is-depth-focus .project-item-glare {
+    --glare-x: 36%;
+    --glare-y: 30%;
+    opacity: 0.5;
+  }
 }
 
 .project-item-media::after {
@@ -248,5 +311,9 @@
 @media (prefers-reduced-motion: reduce) {
   .project-item-media::after {
     animation: none;
+  }
+
+  .project-item-video {
+    display: none;
   }
 }

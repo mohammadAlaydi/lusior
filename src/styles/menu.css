@@ -496,4 +496,11 @@
   #header-menu-labs-arrow2 {
     transition: none;
   }
+
+  /* the hover rule re-declares the arrow-pop transition at higher
+   * specificity than the plain class above — re-kill it here */
+  .header-menu-link:hover .header-menu-link-svg,
+  .header-menu-link:focus-visible .header-menu-link-svg {
+    transition: none;
+  }
 }

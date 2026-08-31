@@ -175,7 +175,9 @@
 }
 
 #end-title:focus-visible {
-  outline: none;
+  outline: 3px solid var(--color-blue);
+  outline-offset: 0.14em;
+  border-radius: 0.04em;
 }
 
 /* --- looping scroll-down pill ------------------------------------------- */

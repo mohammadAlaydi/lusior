@@ -1,0 +1,30 @@
+# Repository and local tooling
+.git
+.github
+.claude
+.telemetry
+node_modules
+npm-debug.log*
+
+# Build products are rebuilt in the image.
+dist
+server/dist
+server/data/*.jsonl
+
+# Never send local configuration, credentials, or developer artifacts to the
+# Docker daemon. Runtime configuration is injected by the platform instead.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.crt
+
+# Non-runtime material
+harness
+reference
+docs
+*.log
+*.tsbuildinfo
+.DS_Store

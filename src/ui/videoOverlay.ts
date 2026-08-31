@@ -1,9 +1,13 @@
 import gsap from 'gsap';
+import { getAppRuntime } from '../core/appRuntime';
 
 /**
  * Fullscreen showreel player (#video-overlay):
  *  - opens from the showreel watch button (#reel-watch) with a 0.4s fade
- *  - play/pause + mute/unmute text buttons, click/drag-seekable progress bar
+ *  - play/pause + mute/unmute text buttons, click/drag/arrow-key-seekable
+ *    progress bar exposed to AT as a slider
+ *  - while open, the overlay's <body> siblings are inert so Tab stays inside
+ *    the dialog; focus returns to the watch button on close
  *  - big white "Close" cursor lerp-follows the pointer over the video surface
  *    (hidden on touch devices and under reduced motion); clicking the surface
  *    closes the overlay, as do Escape and the mobile close button
@@ -23,6 +27,7 @@ interface VideoOverlayOptions {
 export interface VideoOverlayController {
   open(): void;
   close(): void;
+  dispose(): void;
 }
 
 interface OverlayElements {
@@ -159,7 +164,7 @@ function createCursorFollower(overlay: HTMLElement, cursor: HTMLElement): Cursor
 /** Missing asset: reveal the gradient placeholder and inert the transport. */
 const MISSING_MEDIA_GRACE_MS = 2500;
 
-function bindFallback(els: OverlayElements, state: OverlayState): void {
+function bindFallback(els: OverlayElements, state: OverlayState, signal: AbortSignal): void {
   const activate = (): void => {
     if (state.isFallback) return;
     state.isFallback = true;
@@ -170,7 +175,7 @@ function bindFallback(els: OverlayElements, state: OverlayState): void {
     els.muteBtn.disabled = true;
   };
 
-  els.video.addEventListener('error', activate, { once: true });
+  els.video.addEventListener('error', activate, { once: true, signal });
 
   // Dev servers (and some hosts) answer missing media with an HTML fallback
   // page instead of a 404, so 'error' never fires. If the source has produced
@@ -182,40 +187,88 @@ function bindFallback(els: OverlayElements, state: OverlayState): void {
         if (els.video.readyState === HTMLMediaElement.HAVE_NOTHING) activate();
       }, MISSING_MEDIA_GRACE_MS);
     },
-    { once: true },
+    { once: true, signal },
   );
 }
 
-function bindPlaybackControls(els: OverlayElements, state: OverlayState): void {
-  els.playBtn.addEventListener('click', () => {
-    if (state.isFallback) return;
-    if (els.video.paused) {
-      void els.video.play().catch(() => {
-        /* asset missing or playback blocked: fallback handler takes over */
-      });
-    } else {
-      els.video.pause();
-    }
-  });
+function bindPlaybackControls(
+  els: OverlayElements,
+  state: OverlayState,
+  signal: AbortSignal,
+): void {
+  els.playBtn.addEventListener(
+    'click',
+    () => {
+      if (state.isFallback) return;
+      if (els.video.paused) {
+        void els.video.play().catch(() => {
+          /* asset missing or playback blocked: fallback handler takes over */
+        });
+      } else {
+        els.video.pause();
+      }
+    },
+    { signal },
+  );
 
   // Keep labels in sync with the element's real state (covers programmatic
   // play/pause from open()/close() too).
-  els.video.addEventListener('play', () => {
-    els.playBtn.textContent = 'Pause';
-  });
-  els.video.addEventListener('pause', () => {
-    els.playBtn.textContent = 'Play';
-  });
+  els.video.addEventListener(
+    'play',
+    () => {
+      els.playBtn.textContent = 'Pause';
+    },
+    { signal },
+  );
+  els.video.addEventListener(
+    'pause',
+    () => {
+      els.playBtn.textContent = 'Play';
+    },
+    { signal },
+  );
 
-  els.muteBtn.addEventListener('click', () => {
-    if (state.isFallback) return;
-    els.video.muted = !els.video.muted;
-    els.muteBtn.textContent = els.video.muted ? 'Unmute' : 'Mute';
-  });
+  els.muteBtn.addEventListener(
+    'click',
+    () => {
+      if (state.isFallback) return;
+      els.video.muted = !els.video.muted;
+      els.muteBtn.textContent = els.video.muted ? 'Unmute' : 'Mute';
+    },
+    { signal },
+  );
 }
 
-function bindProgress(els: OverlayElements, state: OverlayState): void {
+/** Keyboard seek step for the progress slider, in seconds. */
+const KEY_SEEK_SECONDS = 5;
+
+/** mm:ss for the slider's aria-valuetext, e.g. 83 -> "1:23". */
+function formatTime(seconds: number): string {
+  const whole = Math.floor(seconds);
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+}
+
+function bindProgress(els: OverlayElements, state: OverlayState, signal: AbortSignal): void {
   let isDragging = false;
+
+  // Expose the visual bar as a keyboard-operable slider (the markup only
+  // carries the aria-label; visuals are untouched).
+  els.progressContainer.setAttribute('tabindex', '0');
+  els.progressContainer.setAttribute('role', 'slider');
+  els.progressContainer.setAttribute('aria-valuemin', '0');
+  els.progressContainer.setAttribute('aria-valuemax', '100');
+  els.progressContainer.setAttribute('aria-valuenow', '0');
+
+  function updateSliderAria(): void {
+    const duration = els.video.duration;
+    if (!Number.isFinite(duration) || duration <= 0) return;
+    const percent = Math.round((els.video.currentTime / duration) * 100);
+    els.progressContainer.setAttribute('aria-valuenow', `${percent}`);
+    els.progressContainer.setAttribute(
+      'aria-valuetext',
+      `${formatTime(els.video.currentTime)} of ${formatTime(duration)}`,
+    );
+  }
 
   function seekToPointer(event: PointerEvent): void {
     const duration = els.video.duration;
@@ -234,56 +287,132 @@ function bindProgress(els: OverlayElements, state: OverlayState): void {
     }
   }
 
-  els.video.addEventListener('timeupdate', () => {
-    if (isDragging || !els.video.duration) return;
-    els.progressActive.style.width = `${(els.video.currentTime / els.video.duration) * 100}%`;
-  });
+  els.video.addEventListener(
+    'timeupdate',
+    () => {
+      if (isDragging || !els.video.duration) return;
+      els.progressActive.style.width = `${(els.video.currentTime / els.video.duration) * 100}%`;
+      updateSliderAria();
+    },
+    { signal },
+  );
 
-  els.progressContainer.addEventListener('pointerdown', (event) => {
-    if (state.isFallback) return;
-    isDragging = true;
-    els.progressContainer.setPointerCapture(event.pointerId);
-    seekToPointer(event);
-  });
-  els.progressContainer.addEventListener('pointermove', (event) => {
-    if (isDragging) seekToPointer(event);
-  });
-  els.progressContainer.addEventListener('pointerup', endDrag);
-  els.progressContainer.addEventListener('pointercancel', endDrag);
+  els.progressContainer.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (state.isFallback) return;
+      isDragging = true;
+      els.progressContainer.setPointerCapture(event.pointerId);
+      seekToPointer(event);
+    },
+    { signal },
+  );
+  els.progressContainer.addEventListener(
+    'pointermove',
+    (event) => {
+      if (isDragging) seekToPointer(event);
+    },
+    { signal },
+  );
+  els.progressContainer.addEventListener('pointerup', endDrag, { signal });
+  els.progressContainer.addEventListener('pointercancel', endDrag, { signal });
+
+  els.progressContainer.addEventListener(
+    'keydown',
+    (event) => {
+      const duration = els.video.duration;
+      if (state.isFallback || !Number.isFinite(duration) || duration <= 0) return;
+      let next: number;
+      switch (event.key) {
+        case 'ArrowRight':
+        case 'ArrowUp':
+          next = Math.min(els.video.currentTime + KEY_SEEK_SECONDS, duration);
+          break;
+        case 'ArrowLeft':
+        case 'ArrowDown':
+          next = Math.max(els.video.currentTime - KEY_SEEK_SECONDS, 0);
+          break;
+        case 'Home':
+          next = 0;
+          break;
+        case 'End':
+          next = duration;
+          break;
+        default:
+          return;
+      }
+      event.preventDefault();
+      els.video.currentTime = next;
+      els.progressActive.style.width = `${(next / duration) * 100}%`;
+      updateSliderAria();
+    },
+    { signal },
+  );
 }
 
 /** Clicking the video surface (anything outside the controls) closes. */
-function bindCloseSurface(els: OverlayElements, close: () => void): void {
-  els.overlay.addEventListener('click', (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (target?.closest('#video-overlay__controls, #video-overlay__mobile-close-btn')) return;
-    close();
-  });
-  els.mobileCloseBtn.addEventListener('click', close);
+function bindCloseSurface(els: OverlayElements, close: () => void, signal: AbortSignal): void {
+  els.overlay.addEventListener(
+    'click',
+    (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest('#video-overlay__controls, #video-overlay__mobile-close-btn')) return;
+      close();
+    },
+    { signal },
+  );
+  els.mobileCloseBtn.addEventListener('click', close, { signal });
 }
 
 function createOverlayController(
   els: OverlayElements,
   opts?: VideoOverlayOptions,
 ): VideoOverlayController {
+  const runtime = getAppRuntime();
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const touchOnly = window.matchMedia('(hover: none)').matches;
   const follower =
     reducedMotion || touchOnly ? null : createCursorFollower(els.overlay, els.cursor);
   const state: OverlayState = { isOpen: false, isFallback: false };
+  const abortController = new AbortController();
+  let disposed = false;
+  // Body-level siblings of the overlay made `inert` while open, so focus
+  // stays contained in the dialog. Restored exactly on close (finishClose).
+  let inertedSiblings: Array<{ element: HTMLElement; wasInert: boolean }> = [];
+  let previousDocumentOverflow = '';
 
-  function onKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Escape') close();
+  /**
+   * Make every <body> child except #video-overlay inert. The overlay is a
+   * direct child of <body> (sibling of #ui and #transition-overlay), so
+   * inerting its siblings keeps Tab from escaping behind the opaque layer
+   * without touching anything inside the dialog.
+   */
+  function applyInert(): void {
+    inertedSiblings = [];
+    for (const child of Array.from(document.body.children)) {
+      if (!(child instanceof HTMLElement)) continue;
+      if (child === els.overlay) continue;
+      inertedSiblings.push({ element: child, wasInert: child.inert });
+      child.inert = true;
+    }
+  }
+
+  /** Reverse applyInert() exactly. */
+  function clearInert(): void {
+    for (const { element, wasInert } of inertedSiblings) element.inert = wasInert;
+    inertedSiblings = [];
   }
 
   function open(): void {
-    if (state.isOpen) return;
+    if (state.isOpen || disposed) return;
     state.isOpen = true;
+    runtime.setOverlay('video');
     els.overlay.style.display = 'block';
     els.overlay.setAttribute('aria-hidden', 'false');
     // Belt and braces alongside the orchestrator's Lenis stop via onOpen.
+    previousDocumentOverflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = 'hidden';
-    document.addEventListener('keydown', onKeyDown);
+    applyInert();
     if (reducedMotion) {
       els.overlay.style.opacity = '1';
     } else {
@@ -312,15 +441,18 @@ function createOverlayController(
   function finishClose(): void {
     els.overlay.style.display = 'none';
     els.overlay.setAttribute('aria-hidden', 'true');
-    document.documentElement.style.overflow = '';
+    document.documentElement.style.overflow = previousDocumentOverflow;
+    // Un-inert before restoring focus: the trigger lives under #ui and an
+    // inert element refuses focus.
+    clearInert();
+    runtime.setOverlay('none');
     opts?.onClose?.();
     els.trigger?.focus();
   }
 
   function close(): void {
-    if (!state.isOpen) return;
+    if (!state.isOpen || disposed) return;
     state.isOpen = false;
-    document.removeEventListener('keydown', onKeyDown);
     els.video.pause();
     follower?.stop();
     if (reducedMotion) {
@@ -336,13 +468,30 @@ function createOverlayController(
     }
   }
 
-  bindFallback(els, state);
-  bindPlaybackControls(els, state);
-  bindProgress(els, state);
-  bindCloseSurface(els, close);
-  els.trigger?.addEventListener('click', open);
+  bindFallback(els, state, abortController.signal);
+  bindPlaybackControls(els, state, abortController.signal);
+  bindProgress(els, state, abortController.signal);
+  bindCloseSurface(els, close, abortController.signal);
+  els.trigger?.addEventListener('click', open, { signal: abortController.signal });
+  const unregisterEscape = runtime.registerEscapeHandler('video', close);
 
-  return { open, close };
+  function dispose(): void {
+    if (disposed) return;
+    disposed = true;
+    abortController.abort();
+    unregisterEscape();
+    gsap.killTweensOf(els.overlay);
+    follower?.stop();
+    els.video.pause();
+    state.isOpen = false;
+    clearInert();
+    document.documentElement.style.overflow = previousDocumentOverflow;
+    els.overlay.style.display = 'none';
+    els.overlay.setAttribute('aria-hidden', 'true');
+    if (runtime.getState().overlay === 'video') runtime.setOverlay('none');
+  }
+
+  return { open, close, dispose };
 }
 
 /**
@@ -356,6 +505,7 @@ export function setupVideoOverlay(opts?: VideoOverlayOptions): VideoOverlayContr
     return {
       open: (): void => undefined,
       close: (): void => undefined,
+      dispose: (): void => undefined,
     };
   }
   return createOverlayController(els, opts);

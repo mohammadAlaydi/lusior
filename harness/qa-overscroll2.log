@@ -1,6 +1,0 @@
-AT-END: {"ratio":0,"previewTransform":"none","title":"Aurora Bloom"}
-PARTIAL-FILL: {"ratio":0,"previewTransform":"none","title":"Aurora Bloom"}
-AFTER-IDLE-1.6s: {"ratio":0,"previewTransform":"none","title":"Aurora Bloom"}
-AFTER-FULL: {"ratio":1,"previewTransform":"none","title":"Meridian"}
-CTA: {"tag":"A","href":"https://example.com/meridian","target":"_blank","rel":"noopener noreferrer"}
-VERDICT decayWorks: false

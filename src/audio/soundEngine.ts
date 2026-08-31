@@ -1,7 +1,7 @@
 /*
- * Web Audio sound engine for the lusion.co recreation.
+ * Web Audio sound engine for the Reevez portfolio experience.
  *
- * Two layers, both ORIGINAL (no shipped lusion assets):
+ * Two self-hosted/original layers:
  *
  *  1. UI SFX — fully SYNTHESIZED in Web Audio (zero asset weight). Short
  *     oscillator + gain envelopes, kept quiet and tasteful because they fire a
@@ -52,6 +52,10 @@ export interface SoundEngine {
   playUI(kind: UiSound): void;
   /** Crossfade the looping music to the track for this scene. */
   setScene(scene: Scene): void;
+  /** Temporarily silence audio without changing the persisted user preference. */
+  setSuspended(suspended: boolean): void;
+  /** Release media, AudioContext, and global interaction listeners. */
+  dispose(): void;
 }
 
 interface SoundEngineOptions {
@@ -131,6 +135,7 @@ class MusicTrack {
   private fadeTo = 0;
   private fadeStart = 0;
   private fadeDurationMs = 0;
+  private disposed = false;
 
   constructor(id: string) {
     this.el = new Audio();
@@ -161,7 +166,7 @@ class MusicTrack {
         settled = true;
         window.clearTimeout(timer);
         for (const cleanup of cleanups) cleanup();
-        if (ok && src) {
+        if (ok && src && !this.disposed) {
           this.el.src = src;
           this.el.load();
         }
@@ -201,7 +206,7 @@ class MusicTrack {
 
   /** Fade element volume to `target` over `durationMs`; auto play/pause. */
   async fadeTo_(target: number, durationMs: number): Promise<void> {
-    if (!(await this.available)) return;
+    if (!(await this.available) || this.disposed) return;
 
     if (target > 0 && this.el.paused) {
       try {
@@ -237,6 +242,14 @@ class MusicTrack {
     this.el.pause();
     this.el.volume = 0;
   }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.stop();
+    this.el.removeAttribute('src');
+    this.el.load();
+  }
 }
 
 /**
@@ -248,6 +261,9 @@ class WebAudioSoundEngine implements SoundEngine {
   private readonly master: GainNode | null;
   private unlocked = false;
   private enabled: boolean;
+  private disposed = false;
+  private suspended = false;
+  private readonly abortController = new AbortController();
 
   private readonly button: HTMLElement | null;
 
@@ -291,7 +307,7 @@ class WebAudioSoundEngine implements SoundEngine {
   // --- public API --------------------------------------------------------
 
   unlock(): void {
-    if (this.unlocked) return;
+    if (this.unlocked || this.disposed) return;
     this.unlocked = true;
     if (this.ctx && this.ctx.state === 'suspended') {
       // resume() returns a promise; failure just leaves us locked-but-flagged.
@@ -300,17 +316,19 @@ class WebAudioSoundEngine implements SoundEngine {
       });
     }
     // If the user already enabled sound before the gesture, start the music now.
-    if (this.enabled && this.currentScene) {
+    if (this.enabled && !this.suspended && this.currentScene) {
       this.applyScene(this.currentScene);
     }
   }
 
   toggle(): boolean {
+    if (this.disposed) return false;
     this.setEnabled(!this.enabled);
     return this.enabled;
   }
 
   setEnabled(on: boolean): void {
+    if (this.disposed) return;
     if (on === this.enabled) {
       this.reflectButton();
       return;
@@ -321,7 +339,7 @@ class WebAudioSoundEngine implements SoundEngine {
 
     if (on) {
       this.unlock();
-      if (this.currentScene) this.applyScene(this.currentScene);
+      if (!this.suspended && this.currentScene) this.applyScene(this.currentScene);
     } else {
       this.stopAllMusic();
     }
@@ -332,7 +350,15 @@ class WebAudioSoundEngine implements SoundEngine {
   }
 
   playUI(kind: UiSound): void {
-    if (!this.enabled || !this.unlocked || !this.ctx || !this.master) return;
+    if (
+      this.disposed ||
+      this.suspended ||
+      !this.enabled ||
+      !this.unlocked ||
+      !this.ctx ||
+      !this.master
+    )
+      return;
     if (this.ctx.state !== 'running') return;
 
     if (kind === 'hover') {
@@ -346,9 +372,35 @@ class WebAudioSoundEngine implements SoundEngine {
   }
 
   setScene(scene: Scene): void {
+    if (this.disposed) return;
     this.currentScene = scene;
-    if (!this.enabled) return;
+    if (!this.enabled || this.suspended) return;
     this.applyScene(scene);
+  }
+
+  setSuspended(suspended: boolean): void {
+    if (this.disposed || suspended === this.suspended) return;
+    this.suspended = suspended;
+    if (suspended) {
+      for (const track of this.tracks.values()) track.stop();
+      return;
+    }
+    if (this.enabled && this.currentScene) this.applyScene(this.currentScene);
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.abortController.abort();
+    for (const track of this.tracks.values()) track.dispose();
+    this.tracks.clear();
+    this.currentTrackId = null;
+    this.currentScene = null;
+    this.enabled = false;
+    this.reflectButton();
+    if (this.ctx && this.ctx.state !== 'closed') {
+      void this.ctx.close().catch(() => undefined);
+    }
   }
 
   // --- music -------------------------------------------------------------
@@ -551,10 +603,14 @@ class WebAudioSoundEngine implements SoundEngine {
   }
 
   private wireButton(): void {
-    this.button?.addEventListener('click', () => {
-      this.unlock();
-      this.toggle();
-    });
+    this.button?.addEventListener(
+      'click',
+      () => {
+        this.unlock();
+        this.toggle();
+      },
+      { signal: this.abortController.signal },
+    );
   }
 
   private wireFirstGesture(): void {
@@ -565,12 +621,21 @@ class WebAudioSoundEngine implements SoundEngine {
       window.removeEventListener('wheel', onFirst);
       window.removeEventListener('touchstart', onFirst);
     };
-    window.addEventListener('pointerdown', onFirst, { passive: true });
-    window.addEventListener('keydown', onFirst);
+    window.addEventListener('pointerdown', onFirst, {
+      passive: true,
+      signal: this.abortController.signal,
+    });
+    window.addEventListener('keydown', onFirst, { signal: this.abortController.signal });
     // A wheel-scrolling visitor never fires pointerdown/keydown — cover the
     // scroll-only path too, plus touch, so the AudioContext still unlocks.
-    window.addEventListener('wheel', onFirst, { passive: true });
-    window.addEventListener('touchstart', onFirst, { passive: true });
+    window.addEventListener('wheel', onFirst, {
+      passive: true,
+      signal: this.abortController.signal,
+    });
+    window.addEventListener('touchstart', onFirst, {
+      passive: true,
+      signal: this.abortController.signal,
+    });
   }
 
   /**
@@ -584,7 +649,7 @@ class WebAudioSoundEngine implements SoundEngine {
         if (!this.enabled) return;
         if (this.isInteractive(event.target)) this.playUI('hover');
       },
-      { passive: true, capture: true },
+      { passive: true, capture: true, signal: this.abortController.signal },
     );
 
     document.addEventListener(
@@ -593,7 +658,7 @@ class WebAudioSoundEngine implements SoundEngine {
         if (!this.enabled) return;
         if (this.isInteractive(event.target)) this.playUI('click');
       },
-      { passive: true, capture: true },
+      { passive: true, capture: true, signal: this.abortController.signal },
     );
 
     document.addEventListener(
@@ -602,7 +667,7 @@ class WebAudioSoundEngine implements SoundEngine {
         if (!this.enabled) return;
         if (this.isInteractive(event.target)) this.playUI('focus');
       },
-      { capture: true, passive: true },
+      { capture: true, passive: true, signal: this.abortController.signal },
     );
   }
 

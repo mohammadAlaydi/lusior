@@ -15,6 +15,7 @@ import type { SoundEngine } from '../audio/soundEngine';
 export interface Transition {
   /** Cover the screen, await midpoint(), then reveal. ~0.55s each half. */
   play(midpoint: () => void | Promise<void>, accent?: string): Promise<void>;
+  dispose(): void;
 }
 
 /** Default flood colour when a route doesn't pass an accent. */
@@ -48,9 +49,7 @@ function easeOutExpo(x: number): number {
   for (let i = 0; i < 6; i += 1) {
     const error = bezier(t, C1X, C2X) - x;
     const slope =
-      3 * (1 - t) * (1 - t) * C1X +
-      6 * (1 - t) * t * (C2X - C1X) +
-      3 * t * t * (1 - C2X);
+      3 * (1 - t) * (1 - t) * C1X + 6 * (1 - t) * t * (C2X - C1X) + 3 * t * t * (1 - C2X);
     if (Math.abs(slope) < 1e-5) break;
     t = Math.min(1, Math.max(0, t - error / slope));
   }
@@ -86,10 +85,15 @@ export function createTransition(deps?: { sound?: SoundEngine }): Transition {
 
   // No canvas (or reduced motion) -> no visual; just bridge the midpoint swap.
   if (!overlay || reducedMotion) {
+    let disposed = false;
     return {
       play: async (midpoint, _accent): Promise<void> => {
+        if (disposed) return;
         deps?.sound?.playUI('page');
         await midpoint();
+      },
+      dispose: (): void => {
+        disposed = true;
       },
     };
   }
@@ -98,6 +102,9 @@ export function createTransition(deps?: { sound?: SoundEngine }): Transition {
   let dpr = 1;
   let cssWidth = 0;
   let cssHeight = 0;
+  let disposed = false;
+  let activeFrame = 0;
+  let resolveAnimation: (() => void) | null = null;
 
   function resize(): void {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -127,27 +134,33 @@ export function createTransition(deps?: { sound?: SoundEngine }): Transition {
 
   /** rAF-driven tween of progress from `from`->`to`, easing each frame. */
   function animate(from: number, to: number, accent: string): Promise<void> {
+    if (disposed) return Promise.resolve();
     return new Promise((resolve) => {
+      resolveAnimation = resolve;
       const start = performance.now();
       const tick = (now: number): void => {
+        if (disposed) {
+          resolveAnimation = null;
+          resolve();
+          return;
+        }
         const t = Math.min(1, (now - start) / HALF_DURATION_MS);
         const eased = easeOutExpo(t);
         draw(from + (to - from) * eased, accent);
         if (t < 1) {
-          requestAnimationFrame(tick);
+          activeFrame = requestAnimationFrame(tick);
         } else {
+          activeFrame = 0;
+          resolveAnimation = null;
           resolve();
         }
       };
-      requestAnimationFrame(tick);
+      activeFrame = requestAnimationFrame(tick);
     });
   }
 
   /** One full cover -> midpoint -> reveal cycle. */
-  async function runOnce(
-    midpoint: () => void | Promise<void>,
-    accent?: string,
-  ): Promise<void> {
+  async function runOnce(midpoint: () => void | Promise<void>, accent?: string): Promise<void> {
     const colour = accent ?? DEFAULT_ACCENT;
     resize();
 
@@ -157,8 +170,10 @@ export function createTransition(deps?: { sound?: SoundEngine }): Transition {
 
     try {
       await animate(0, 1, colour); // cover
+      if (disposed) return;
       draw(1, colour); // hold fully covered while the swap runs
       await midpoint();
+      if (disposed) return;
       await animate(1, 0, colour); // reveal
       ctx.clearRect(0, 0, cssWidth, cssHeight);
     } finally {
@@ -170,10 +185,8 @@ export function createTransition(deps?: { sound?: SoundEngine }): Transition {
   // cover -> midpoint -> reveal runs to completion before the next begins.
   let playChain: Promise<void> = Promise.resolve();
 
-  function play(
-    midpoint: () => void | Promise<void>,
-    accent?: string,
-  ): Promise<void> {
+  function play(midpoint: () => void | Promise<void>, accent?: string): Promise<void> {
+    if (disposed) return Promise.resolve();
     const next = playChain.then(() => runOnce(midpoint, accent));
     // Keep the serialization chain alive even if THIS play rejects — otherwise a
     // single failed transition (e.g. a throwing midpoint) would wedge every
@@ -182,5 +195,17 @@ export function createTransition(deps?: { sound?: SoundEngine }): Transition {
     return next;
   }
 
-  return { play };
+  function dispose(): void {
+    if (disposed) return;
+    disposed = true;
+    window.removeEventListener('resize', resize);
+    if (activeFrame) cancelAnimationFrame(activeFrame);
+    activeFrame = 0;
+    resolveAnimation?.();
+    resolveAnimation = null;
+    canvas.classList.remove('is-active');
+    ctx.clearRect(0, 0, cssWidth, cssHeight);
+  }
+
+  return { play, dispose };
 }

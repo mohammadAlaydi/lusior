@@ -2,6 +2,17 @@ import gsap from 'gsap';
 import { ScrollTrigger } from './scroll';
 import { splitWords } from './splitWords';
 
+/** A small lifecycle contract so the app runtime can pause or tear down UI work. */
+export interface ReelController {
+  setSuspended(suspended: boolean): void;
+  dispose(): void;
+}
+
+const noopController: ReelController = {
+  setSuspended: () => undefined,
+  dispose: () => undefined,
+};
+
 /**
  * Showreel scroll choreography (matched frame-by-frame against the reference):
  *  - masked line reveal for the two title lines
@@ -12,61 +23,69 @@ import { splitWords } from './splitWords';
  *    ~a viewport while the reel plays before releasing
  *  - "Play [pill] Reel" overlay + corner crosses appear near full expansion
  */
-export function setupReelSection(): void {
+export function setupReelSection(): ReelController {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   if (reducedMotion) {
     gsap.set(['.reel-line', '#reel-content'], { clearProps: 'all' });
-    return;
+    return noopController;
   }
+
+  const animations: gsap.core.Animation[] = [];
 
   // --- title: per-word masked reveal ----------------------------------------
   const titleWords = Array.from(document.querySelectorAll<HTMLElement>('.reel-line')).flatMap(
     (line) => splitWords(line),
   );
   gsap.set(titleWords, { yPercent: 115, rotation: 6, transformOrigin: '0% 100%' });
-  gsap.to(titleWords, {
-    yPercent: 0,
-    rotation: 0,
-    duration: 1.15,
-    ease: 'power4.out',
-    stagger: 0.07,
-    scrollTrigger: {
-      trigger: '#reel-title',
-      start: 'top 82%',
-      once: true,
-    },
-  });
+  animations.push(
+    gsap.to(titleWords, {
+      yPercent: 0,
+      rotation: 0,
+      duration: 1.15,
+      ease: 'power4.out',
+      stagger: 0.07,
+      scrollTrigger: {
+        trigger: '#reel-title',
+        start: 'top 82%',
+        once: true,
+      },
+    }),
+  );
 
   // --- description: line-by-line rise, then the CTA -------------------------
   const desc = document.getElementById('reel-desc');
   if (desc) {
     const descWords = splitWords(desc);
     gsap.set(descWords, { yPercent: 110 });
-    gsap.to(descWords, {
-      yPercent: 0,
-      duration: 0.9,
-      ease: 'power3.out',
-      stagger: 0.012,
-      scrollTrigger: {
-        trigger: '#reel-content',
-        start: 'top 85%',
-        once: true,
-      },
-    });
+    animations.push(
+      gsap.to(descWords, {
+        yPercent: 0,
+        duration: 0.9,
+        ease: 'power3.out',
+        stagger: 0.012,
+        scrollTrigger: {
+          trigger: '#reel-content',
+          start: 'top 85%',
+          once: true,
+        },
+      }),
+    );
   }
 
-  gsap.from('#reel-cta', {
-    opacity: 0,
-    y: 24,
-    duration: 0.9,
-    ease: 'power3.out',
-    scrollTrigger: {
-      trigger: '#reel-content',
-      start: 'top 80%',
-      once: true,
-    },
-  });
+  animations.push(
+    gsap.from('#reel-cta', {
+      opacity: 0,
+      y: 24,
+      duration: 0.9,
+      ease: 'power3.out',
+      scrollTrigger: {
+        trigger: '#reel-content',
+        start: 'top 80%',
+        once: true,
+      },
+    }),
+  );
 
   // --- the ribbon draws itself in across the section -------------------------
   // It spans from beside the title, loops around the video thumb, and waves
@@ -75,17 +94,19 @@ export function setupReelSection(): void {
   if (swirl) {
     const length = swirl.getTotalLength();
     gsap.set(swirl, { strokeDasharray: length, strokeDashoffset: length });
-    gsap.to(swirl, {
-      strokeDashoffset: 0,
-      ease: 'none',
-      scrollTrigger: {
-        trigger: '#reel',
-        start: 'top 75%',
-        end: '+=170%',
-        scrub: 0.5,
-        invalidateOnRefresh: true,
-      },
-    });
+    animations.push(
+      gsap.to(swirl, {
+        strokeDashoffset: 0,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: '#reel',
+          start: 'top 75%',
+          end: '+=170%',
+          scrub: 0.5,
+          invalidateOnRefresh: true,
+        },
+      }),
+    );
   }
 
   // --- thumb -> fullwidth morph (reference: rect-to-rect lerp) ---------------
@@ -93,7 +114,12 @@ export function setupReelSection(): void {
   const frame = document.getElementById('reel-frame');
   const thumb = document.getElementById('reel-thumb');
   const sizer = document.getElementById('reel-sizer');
-  if (!container || !frame || !thumb || !sizer) return;
+  if (!container || !frame || !thumb || !sizer) {
+    return {
+      setSuspended: () => undefined,
+      dispose: () => animations.forEach((animation) => animation.kill()),
+    };
+  }
 
   // Start/end rects are cached on every ScrollTrigger refresh (with pins
   // reverted) and the morph lerps between them — gsap's recorded fromTo
@@ -148,6 +174,7 @@ export function setupReelSection(): void {
       scrub: 0.5,
     },
   });
+  animations.push(expand);
 
   expand
     .to(morph, { p: 1, duration: 1, onUpdate: applyMorph }, 0)
@@ -172,7 +199,7 @@ export function setupReelSection(): void {
   applyMorph();
 
   // --- pinned hold at full size (reference holds ~1 viewport) ----------------
-  ScrollTrigger.create({
+  const pinTrigger = ScrollTrigger.create({
     trigger: container,
     start: 'top 12%',
     end: '+=90%',
@@ -182,23 +209,71 @@ export function setupReelSection(): void {
   });
 
   // --- hero drifts up slightly as the reel takes over ------------------------
-  gsap.to('#hero-visual', {
-    y: () => -window.innerHeight * 0.08,
-    ease: 'none',
-    scrollTrigger: {
-      trigger: '#hero',
-      start: 'bottom bottom',
-      end: 'bottom top',
-      scrub: true,
-      invalidateOnRefresh: true,
+  animations.push(
+    gsap.to('#hero-visual', {
+      y: () => -window.innerHeight * 0.08,
+      ease: 'none',
+      scrollTrigger: {
+        trigger: '#hero',
+        start: 'bottom bottom',
+        end: 'bottom top',
+        scrub: true,
+        invalidateOnRefresh: true,
+      },
+    }),
+  );
+
+  return {
+    setSuspended(_nextSuspended: boolean): void {
+      // ScrollTriggers do not own a continuous animation loop. Keeping their
+      // current visual state avoids a layout jump while an overlay is open;
+      // video decoding is controlled separately by setupReelVideo().
     },
-  });
+    dispose(): void {
+      ScrollTrigger.removeEventListener('refreshInit', measureRects);
+      ScrollTrigger.removeEventListener('refresh', applyMorph);
+      pinTrigger.kill();
+      animations.forEach((animation) => animation.kill());
+    },
+  };
 }
 
-/** Hides the <video> if its file is missing, leaving the animated placeholder. */
-export function setupReelVideo(): void {
+/**
+ * Reveals the <video> once its metadata arrives, defers the full download
+ * until the reel approaches the viewport, and pauses the loop while the
+ * section is far offscreen. Hides the <video> if its file is missing,
+ * leaving the animated placeholder.
+ */
+export function setupReelVideo(): ReelController {
   const video = document.getElementById('reel-video') as HTMLVideoElement | null;
-  if (!video) return;
+  const toggle = document.getElementById('reel-pause') as HTMLButtonElement | null;
+  if (!video) return noopController;
+
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const abortController = new AbortController();
+  let suspended = false;
+  let intersecting = false;
+  let observing = false;
+  let disposed = false;
+  let loaded = video.currentSrc.length > 0;
+  // This is a user preference, not a transient lifecycle state: returning to
+  // the viewport or closing an overlay must never restart motion they paused.
+  let userPaused = reducedMotion;
+
+  const updateToggle = (): void => {
+    if (!toggle) return;
+    toggle.setAttribute('aria-pressed', String(userPaused));
+    toggle.textContent = userPaused ? 'Play showreel' : 'Pause showreel';
+  };
+
+  const loadVideo = (): void => {
+    if (loaded || disposed) return;
+    const source = video.dataset.src;
+    if (!source) return;
+    loaded = true;
+    video.src = source;
+    video.load();
+  };
 
   video.addEventListener(
     'error',
@@ -212,13 +287,102 @@ export function setupReelVideo(): void {
         video.hidden = true;
       }
     },
-    { once: true },
+    { once: true, signal: abortController.signal },
   );
 
-  video.addEventListener('canplay', () => {
+  // No request occurs until loadVideo() attaches data-src. Once metadata
+  // arrives, reveal the first frame; until then the styled placeholder keeps
+  // the scroll morph intact.
+  if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
     video.hidden = false;
+  } else {
+    video.addEventListener(
+      'loadedmetadata',
+      () => {
+        video.hidden = false;
+      },
+      { once: true, signal: abortController.signal },
+    );
+  }
+
+  // Attach the source only once the actual frame intersects the viewport.
+  // Observing the container (not the hidden video) keeps this reliable before
+  // metadata arrives, while rootMargin: 0px prevents an early network fetch.
+  const target = document.getElementById('reel-container') ?? video.parentElement ?? video;
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        intersecting = entry.isIntersecting;
+      }
+      if (intersecting) loadVideo();
+      updatePlayback();
+    },
+    { rootMargin: '0px' },
+  );
+
+  const updatePlayback = (): void => {
+    if (userPaused || suspended || document.hidden || !intersecting || !loaded) {
+      video.pause();
+      return;
+    }
     void video.play().catch(() => {
       /* autoplay blocked: poster gradient stays */
     });
+  };
+  const startObserving = (): void => {
+    if (observing || suspended || document.hidden) return;
+    observing = true;
+    observer.observe(target);
+  };
+  const stopObserving = (): void => {
+    if (!observing) return;
+    observing = false;
+    // Disconnecting suppresses future callbacks; clear the last result so a
+    // resume cannot briefly replay an offscreen reel before it is observed.
+    intersecting = false;
+    observer.disconnect();
+  };
+  const updateLifecycle = (): void => {
+    if (disposed) return;
+    if (suspended || document.hidden) {
+      video.pause();
+      stopObserving();
+    } else {
+      startObserving();
+      updatePlayback();
+    }
+  };
+
+  document.addEventListener('visibilitychange', updateLifecycle, {
+    signal: abortController.signal,
   });
+  toggle?.addEventListener(
+    'click',
+    () => {
+      userPaused = !userPaused;
+      updateToggle();
+      if (!userPaused) {
+        // A deliberate play action is allowed in reduced-motion mode and may
+        // initiate the deferred request even before the observer callback.
+        loadVideo();
+      }
+      updatePlayback();
+    },
+    { signal: abortController.signal },
+  );
+  updateToggle();
+  startObserving();
+  return {
+    setSuspended(nextSuspended: boolean): void {
+      suspended = nextSuspended;
+      updateLifecycle();
+    },
+    dispose(): void {
+      if (disposed) return;
+      disposed = true;
+      video.pause();
+      stopObserving();
+      abortController.abort();
+    },
+  };
 }

@@ -87,7 +87,10 @@ html:not(.is-project-details-active) #project-details {
     /* Clear the fixed header (logo / back button / talk+menu pills) whatever
      * the viewport height — a bare 10vh collapses on short/landscape phones and
      * the title slid up under the header cluster. */
-    padding-top: max(calc(var(--vh, 1vh) * 10), calc(var(--base-padding-y) * 2 + var(--header-size) * 3.5));
+    padding-top: max(
+      calc(var(--vh, 1vh) * 10),
+      calc(var(--base-padding-y) * 2 + var(--header-size) * 3.5)
+    );
     padding-bottom: 50px;
     transform: translateZ(0);
     min-width: inherit;
@@ -278,60 +281,39 @@ html:not(.is-project-details-active) #project-details {
   }
 }
 
-/* --- launch CTA (flood pill, dot scales 26 like .cta-pill) ----------------- */
-#project-details-launch-cta-mobile,
-#project-details-launch-cta {
+/* --- launch destinations -------------------------------------------------- */
+.project-details-launches {
   display: none;
-  height: 3.375em;
-  /* breathing room above the pill so it doesn't crowd the last credits
-   * line sitting right above it (mobile overrides this to 4em below). */
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75em;
   margin-top: 1.75em;
-  padding: 1em 1.5em 1em 1.125em;
+}
+
+#project-details.has-ctas .project-details-launches--desktop {
+  display: flex;
+}
+
+.project-details-launch-cta {
+  position: relative;
+  display: flex;
   align-items: center;
   gap: 1.125em;
   width: fit-content;
+  min-height: 3.375em;
+  padding: 1em 1.5em 1em 1.125em;
   overflow: hidden;
   background: var(--project-details-btn-bg, #fff);
   border-radius: 100px;
   font-family: var(--font-sans);
-  text-transform: uppercase;
   font-weight: 500;
   color: var(--project-details-btn-text);
+  text-transform: uppercase;
   transition: background 0.5s cubic-bezier(0.35, 0, 0, 1);
 }
 
-@media (max-width: 812px) {
-  #project-details-launch-cta-mobile,
-  #project-details-launch-cta {
-    font-size: 1em;
-  }
-}
-
-/* .has-cta is toggled by the logic agent when launchUrl exists */
-#project-details.has-cta #project-details-launch-cta {
-  display: flex;
-}
-
-#project-details.has-cta #project-details-launch-cta-mobile {
-  display: none;
-}
-
-@media (max-width: 812px) {
-  #project-details.has-cta #project-details-launch-cta {
-    display: none;
-  }
-
-  #project-details-launch-cta-mobile {
-    margin-top: 4em;
-  }
-
-  #project-details.has-cta #project-details-launch-cta-mobile {
-    display: flex;
-  }
-}
-
-#project-details-launch-cta-mobile-dot,
-#project-details-launch-cta-dot {
+.project-details-launch-cta-dot {
+  flex: 0 0 auto;
   width: 0.5em;
   height: 0.5em;
   background: var(--project-details-btn-text);
@@ -342,28 +324,27 @@ html:not(.is-project-details-active) #project-details {
     transform 0.4s cubic-bezier(0.35, 0, 0, 1);
 }
 
-#project-details-launch-cta-mobile-text,
-#project-details-launch-cta-text {
-  font-size: 0.875em;
+.project-details-launch-cta-text {
   position: relative;
   margin: 0;
-  z-index: 1;
+  font-size: 0.875em;
   font-weight: 500;
+  white-space: nowrap;
+  z-index: 1;
   transition:
     color 0.5s cubic-bezier(0.35, 0, 0, 1) 0.1s,
     transform 0.4s cubic-bezier(0.35, 0, 0, 1) 0.1s;
 }
 
-#project-details-launch-cta-mobile-arrow,
-#project-details-launch-cta-arrow {
+.project-details-launch-cta-arrow {
   position: absolute;
   display: flex;
   justify-content: center;
   align-items: center;
   top: calc(50% - 0.75em);
   right: 0.75em;
-  height: 1.5em;
   width: 1.5em;
+  height: 1.5em;
   background: var(--color-white);
   border-radius: 100%;
   transform: scale(0);
@@ -371,53 +352,55 @@ html:not(.is-project-details-active) #project-details {
   z-index: 1;
 }
 
-#project-details-launch-cta-mobile-arrow svg,
-#project-details-launch-cta-arrow svg {
+.project-details-launch-cta-arrow svg {
   width: 90%;
   height: 90%;
   transition: color 0.5s;
 }
 
-/* hover flood — exactly the .cta-pill mechanic: label slides left, dot floods
- * to scale(26), arrow chip scales in, colours swap to the project highlight */
+@media (max-width: 812px) {
+  #project-details.has-ctas .project-details-launches--desktop {
+    display: none;
+  }
+
+  #project-details.has-ctas .project-details-launches--mobile {
+    display: flex;
+    clear: both;
+    width: 100%;
+    margin-top: 4em;
+  }
+
+  .project-details-launch-cta {
+    font-size: 1em;
+  }
+}
+
+/* hover flood — the label slides left, the dot floods, and the arrow appears */
 @media (hover: hover) {
-  #project-details-launch-cta-mobile:hover,
-  #project-details-launch-cta:hover {
+  .project-details-launch-cta:hover {
     color: var(--project-details-btn-text-hover);
     background: var(--project-details-highlight);
     transition: background 0.5s cubic-bezier(0.35, 0, 0, 1) 0.1s;
   }
 
-  #project-details-launch-cta-mobile:hover #project-details-launch-cta-text,
-  #project-details-launch-cta:hover #project-details-launch-cta-text,
-  #project-details-launch-cta-mobile:hover #project-details-launch-cta-mobile-text,
-  #project-details-launch-cta:hover #project-details-launch-cta-mobile-text {
+  .project-details-launch-cta:hover .project-details-launch-cta-text {
     transform: translate3d(-20%, 0, 0);
     transition:
       color 0.5s cubic-bezier(0.35, 0, 0, 1),
       transform 0.4s cubic-bezier(0.35, 0, 0, 1);
   }
 
-  #project-details-launch-cta-mobile:hover #project-details-launch-cta-dot,
-  #project-details-launch-cta:hover #project-details-launch-cta-dot,
-  #project-details-launch-cta-mobile:hover #project-details-launch-cta-mobile-dot,
-  #project-details-launch-cta:hover #project-details-launch-cta-mobile-dot {
+  .project-details-launch-cta:hover .project-details-launch-cta-dot {
     transform: translate3d(5em, 0, 0) scale(26);
     background: var(--project-details-highlight);
   }
 
-  #project-details-launch-cta-mobile:hover #project-details-launch-cta-arrow,
-  #project-details-launch-cta:hover #project-details-launch-cta-arrow,
-  #project-details-launch-cta-mobile:hover #project-details-launch-cta-mobile-arrow,
-  #project-details-launch-cta:hover #project-details-launch-cta-mobile-arrow {
+  .project-details-launch-cta:hover .project-details-launch-cta-arrow {
     transform: scale(1);
     transition: transform 0.4s cubic-bezier(0.35, 0, 0, 1) 0.1s;
   }
 
-  #project-details-launch-cta-mobile:hover #project-details-launch-cta-arrow svg,
-  #project-details-launch-cta:hover #project-details-launch-cta-arrow svg,
-  #project-details-launch-cta-mobile:hover #project-details-launch-cta-mobile-arrow svg,
-  #project-details-launch-cta:hover #project-details-launch-cta-mobile-arrow svg {
+  .project-details-launch-cta:hover .project-details-launch-cta-arrow svg {
     color: var(--project-details-icon-color);
   }
 }
@@ -429,6 +412,9 @@ html:not(.is-project-details-active) #project-details {
   width: 100%;
   height: calc(100% - var(--base-padding-y) * 4 - var(--header-size) * 3.9);
   top: calc(var(--base-padding-y) * 2 + var(--header-size) * 2.8);
+  /* The transparent rail spans the full layer. Let links in the meta block
+   * receive pointer input through it; wheel/drag listeners live on the root. */
+  pointer-events: none;
 }
 
 #project-details-items-move-container {
@@ -500,14 +486,33 @@ html:not(.is-project-details-active) #project-details {
     margin-bottom: 40px;
   }
 
-  /* Media blocks need an explicit height on mobile: with no fixed-height rail
-   * parent, height:100% would collapse the panels and let the photos/videos
-   * run their full intrinsic height. A capped viewport-relative band keeps the
-   * stack tidy. */
+  /* Let real screenshots keep their intrinsic aspect instead of forcing every
+   * app surface into the same landscape band. */
   .project-details-item[data-kind='image'],
-  .project-details-item[data-kind='video'],
+  .project-details-item[data-kind='video'] {
+    height: auto !important;
+  }
+
+  .project-details-item[data-kind='image'] img,
+  .project-details-item[data-kind='video'] video {
+    height: auto;
+    object-fit: contain;
+  }
+
+  .project-details-item[data-kind='video'] video,
   .project-details-item[data-kind='panel'] {
-    height: clamp(240px, 64vw, 440px) !important;
+    aspect-ratio: 16 / 9;
+  }
+
+  .project-details-item[data-kind='panel'] {
+    height: auto !important;
+  }
+
+  /* App-store and emulator captures stay phone-sized on tablets while still
+   * shrinking fluidly to the available width on phones. */
+  .project-details-item[data-fit='contain'] {
+    width: min(100%, 30rem) !important;
+    margin-inline: auto;
   }
 }
 
@@ -530,7 +535,7 @@ html:not(.is-project-details-active) #project-details {
   }
 }
 
-/* --- media fill (image / video stretch to the gallery band) --------------- */
+/* --- media fill ----------------------------------------------------------- */
 .project-details-item img,
 .project-details-item video {
   display: block;
@@ -538,6 +543,29 @@ html:not(.is-project-details-active) #project-details {
   height: 100%;
   object-fit: cover;
   border-radius: var(--global-border-radius);
+}
+
+/* Screenshots must remain legible and uncropped at every viewport. Videos can
+ * keep the cinematic crop in the desktop rail; the responsive stack above
+ * switches them to contain as well. */
+.project-details-item img {
+  object-fit: contain;
+}
+
+.project-details-item[data-kind='image'] {
+  background: var(--project-details-bg-alt);
+  border-radius: var(--global-border-radius);
+}
+
+.project-details-item[data-fit='contain'] {
+  overflow: hidden;
+  border-radius: var(--global-border-radius);
+  background: var(--project-details-bg-alt);
+}
+
+.project-details-item[data-fit='contain'] img,
+.project-details-item[data-fit='contain'] video {
+  object-fit: contain;
 }
 
 /* --- panel placeholder (original themed gradient, no stock art) -----------
@@ -756,18 +784,20 @@ html:not(.is-project-details-active) #project-details {
 
 /* --- reduced motion: neutralise the long flood/underline transitions ------ */
 @media (prefers-reduced-motion: reduce) {
-  #project-details-launch-cta,
-  #project-details-launch-cta-mobile,
-  #project-details-launch-cta-dot,
-  #project-details-launch-cta-mobile-dot,
-  #project-details-launch-cta-text,
-  #project-details-launch-cta-mobile-text,
-  #project-details-launch-cta-arrow,
-  #project-details-launch-cta-mobile-arrow,
+  .project-details-launch-cta,
+  .project-details-launch-cta-dot,
+  .project-details-launch-cta-text,
+  .project-details-launch-cta-arrow,
   #project-details-desc a::after,
   #project-details-side-list a::after,
   #project-details-preview-footer-bar-inner,
   #project-details-items-move-container {
+    transition-duration: 0.01ms;
+  }
+
+  /* Hover rules re-declare transitions at higher specificity. */
+  .project-details-launch-cta:hover .project-details-launch-cta-text,
+  .project-details-launch-cta:hover .project-details-launch-cta-arrow {
     transition-duration: 0.01ms;
   }
 }

@@ -1,0 +1,31 @@
+# Generated / vendor / measurement data
+dist/
+server/dist/
+node_modules/
+public/
+reference/
+harness/
+package-lock.json
+.claude/
+.telemetry/
+CLAUDE.md
+
+# Historical audit/fidelity records are preserved verbatim. Current operational
+# documentation remains inside Prettier's verification boundary.
+docs/agent-briefing.md
+docs/CLONING-PLAYBOOK.md
+docs/CODE-REVIEW-2026-08.md
+docs/HANDOFF.md
+docs/LABS-CLONE-PLAN.md
+docs/LIBRARIES.md
+docs/MEDIA-CAPTURE-PLAN.md
+docs/PRODUCTION-CONTENT-PLAN.md
+docs/project-details-spec.md
+docs/PROJECTS-FIDELITY.md
+docs/TEAM-ONBOARDING.md
+docs/TECH-STACK.md
+docs/verification-playbook.md
+
+# The page markup is measured against the reference site — whitespace between
+# inline elements is layout-significant. Never machine-reformat it.
+index.html

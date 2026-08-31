@@ -62,9 +62,7 @@ export function setupTunnelZone(): TunnelZone {
   // Query inside the zone: an older static placeholder with the same id may
   // still exist elsewhere in #goal.
   const title = tunnel.querySelector<HTMLElement>('#goal-tunnel-title');
-  const lines = Array.from(
-    tunnel.querySelectorAll<HTMLElement>('.goal-tunnel-title-line'),
-  );
+  const lines = Array.from(tunnel.querySelectorAll<HTMLElement>('.goal-tunnel-title-line'));
 
   const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
   if (reducedMotionQuery.matches) {
@@ -81,9 +79,7 @@ export function setupTunnelZone(): TunnelZone {
     return zone;
   }
 
-  const setLineY: NumberSetter[] = lines.map((line) =>
-    quickSetterFor(spansOf(line), 'yPercent'),
-  );
+  const setLineY: NumberSetter[] = lines.map((line) => quickSetterFor(spansOf(line), 'yPercent'));
   const setTitleScale = title ? quickSetterFor(title, 'scale') : noopSetter;
   const setTitleOpacity = title ? quickSetterFor(title, 'opacity') : noopSetter;
   let isTitleHidden = false;

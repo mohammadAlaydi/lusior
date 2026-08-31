@@ -68,11 +68,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(
-    120% 90% at 50% 38%,
-    transparent 55%,
-    rgba(4, 5, 9, 0.5) 100%
-  );
+  background: radial-gradient(120% 90% at 50% 38%, transparent 55%, rgba(4, 5, 9, 0.5) 100%);
 }
 
 /* --- bottom scroll strip ------------------------------------------------ */

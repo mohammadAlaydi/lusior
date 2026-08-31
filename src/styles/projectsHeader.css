@@ -12,12 +12,9 @@
  */
 
 #header-center {
-  /* NOT position:relative — this div has no in-flow content (the back
-   * button is absolutely positioned), so as a flex item it collapses to
-   * 0 width and lands wherever the 3-item space-between row puts it.
-   * Leaving it un-positioned lets the back button's left/right em offsets
-   * below resolve against #header (position: fixed) instead, which is the
-   * full-width box the ground-truth measurements were taken against. */
+  /* The wide layout keeps the reference's absolute placement. At tablet and
+   * phone widths this becomes a real flex slot so the back control participates
+   * in header geometry instead of colliding with absolutely-positioned text. */
   pointer-events: none;
 }
 
@@ -47,12 +44,16 @@
   gap: 0.625em;
   overflow: hidden;
   transform: scale(0);
+  /* visibility (not just scale) so the hidden button is out of the tab order
+     and invisible to assistive tech while no project is open */
+  visibility: hidden;
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* a project is open -> the button scales in */
 .is-project-details-active #header-center-project-back-btn {
   transform: scale(1);
+  visibility: visible;
 }
 
 /* flood child: scaleY background sweep on hover (origin bottom) */
@@ -148,14 +149,23 @@
   }
 }
 
-/* mobile: square icon-only button. Anchored just RIGHT OF THE LOGO (not the
- * right edge): the sound/talk/menu cluster is too wide on small screens, so the
- * old right-offset dropped the button on top of MENU. The logo→cluster gap is
- * clear at every width in this range, so left-anchoring keeps it collision-free. */
-@media (max-width: 812px) {
+/* Tablet/phone: make the center a real flex slot and keep the back control in
+ * flow. This structurally prevents overlap with both the logo and action row. */
+@media (max-width: 1200px) {
+  #header-center {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+  }
+
   #header-center-project-back-btn {
-    left: calc(var(--base-padding-x) + 8em);
+    position: relative;
+    top: auto;
+    left: auto;
     right: auto;
+    flex: 0 0 3.2em;
     width: 3.2em;
     padding: 0;
     justify-content: center;
@@ -193,7 +203,7 @@
   transition: color 0.5s;
 }
 
-@media (max-width: 812px) {
+@media (max-width: 1200px) {
   #project-details-header-info {
     display: none;
   }

@@ -1,26 +1,14 @@
 import type { ProjectDetail } from '../../shared/projects';
+import { getAppRuntime, type AppRoute } from '../core/appRuntime';
 import type { SoundEngine } from '../audio/soundEngine';
 import type { Transition } from './transition';
 import type { ProjectDetailController } from './projectDetail';
 
-/**
- * History-API router for the single-page app (see docs/project-details-spec.md
- * §4). Two routes only:
- *   '/'                 -> home (detail layer closed)
- *   '/projects/:slug'   -> the project detail layer open over the home page
- *
- * Navigation is driven through the page-transition wipe: the route swap (open /
- * close the detail layer, flip the global active flag, crossfade music) runs at
- * the transition's covered midpoint, so the user never sees the layer pop in.
- * Clicks on featured tiles (`a[href^="/projects/"]`) are intercepted and routed
- * client-side; back/forward (`popstate`) re-derives the route without pushing.
- */
-
+/** History-API router for the home and project-detail routes. */
 export interface Router {
-  /** Resolve the current URL and open the matching route (no history push). */
   start(): void;
-  /** Navigate to a path, running the transition + history update. */
   navigate(path: string, opts?: { replace?: boolean }): void;
+  dispose(): void;
 }
 
 export interface RouterDeps {
@@ -28,191 +16,212 @@ export interface RouterDeps {
   transition: Transition;
   sound?: SoundEngine;
   loadProject: (slug: string) => Promise<ProjectDetail | null>;
+  /** Optional structured logger; navigation always recovers to a usable home. */
+  onNavigationError?: (error: unknown, path: string) => void;
 }
 
-/** Parsed route: home, or a project by slug. */
-type Route = { kind: 'home' } | { kind: 'project'; slug: string };
+interface LocationParts {
+  pathname: string;
+  search: string;
+  hash: string;
+}
+
+type Route =
+  | { kind: 'home'; location: LocationParts }
+  | { kind: 'project'; slug: string; location: LocationParts }
+  | { kind: 'unknown'; location: LocationParts };
 
 const HOME_PATH = '/';
 const PROJECT_PREFIX = '/projects/';
-const ACTIVE_CLASS = 'is-project-details-active';
-const BASE_TITLE = 'Northwind Studio';
+const BASE_TITLE = 'Reevez Studio';
 
-/** Derive a Route from a pathname. Unknown paths fall back to home. */
-function routeFromPath(pathname: string): Route {
-  if (pathname.startsWith(PROJECT_PREFIX)) {
-    const slug = pathname.slice(PROJECT_PREFIX.length).replace(/\/+$/, '');
-    if (slug.length > 0) return { kind: 'project', slug };
+function locationParts(input: string): LocationParts {
+  const url = new URL(input, window.location.origin);
+  return { pathname: url.pathname, search: url.search, hash: url.hash };
+}
+
+/** Parse explicitly: unknown paths are never represented as home in memory. */
+function routeFromPath(input: string): Route {
+  const location = locationParts(input);
+  if (location.pathname === HOME_PATH) return { kind: 'home', location };
+  if (location.pathname.startsWith(PROJECT_PREFIX)) {
+    const slug = location.pathname.slice(PROJECT_PREFIX.length).replace(/\/+$/, '');
+    if (slug) {
+      return {
+        kind: 'project',
+        slug,
+        location: { ...location, pathname: `${PROJECT_PREFIX}${slug}` },
+      };
+    }
   }
+  return { kind: 'unknown', location };
+}
+
+function routesEqual(a: Route, b: Route): boolean {
+  if (a.kind !== b.kind || a.location.pathname !== b.location.pathname) return false;
+  if (a.location.search !== b.location.search || a.location.hash !== b.location.hash) return false;
+  return a.kind !== 'project' || b.kind !== 'project' || a.slug === b.slug;
+}
+
+function urlFor(location: LocationParts): string {
+  return `${location.pathname}${location.search}${location.hash}`;
+}
+
+function runtimeRoute(route: Route): AppRoute {
+  if (route.kind === 'project') return { kind: 'project', slug: route.slug };
+  if (route.kind === 'unknown') return { kind: 'not-found', pathname: route.location.pathname };
   return { kind: 'home' };
 }
 
-/** True when two routes address the same place. */
-function routesEqual(a: Route, b: Route): boolean {
-  if (a.kind !== b.kind) return false;
-  if (a.kind === 'project' && b.kind === 'project') return a.slug === b.slug;
-  return true;
-}
-
-/** Path string for a route (canonical, trailing-slash free). */
-function pathForRoute(route: Route): string {
-  return route.kind === 'project' ? `${PROJECT_PREFIX}${route.slug}` : HOME_PATH;
-}
-
-/**
- * Is this an in-app left-click we should intercept? Mirrors the standard SPA
- * guard: primary button, no modifier keys, same-origin, not target=_blank,
- * not a download.
- */
 function isInterceptableClick(event: MouseEvent, anchor: HTMLAnchorElement): boolean {
-  if (event.defaultPrevented) return false;
-  if (event.button !== 0) return false;
+  if (event.defaultPrevented || event.button !== 0) return false;
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
   if (anchor.target && anchor.target !== '_self') return false;
-  if (anchor.hasAttribute('download')) return false;
-  if (anchor.origin !== window.location.origin) return false;
+  if (anchor.hasAttribute('download') || anchor.origin !== window.location.origin) return false;
   return true;
 }
 
 export function setupRouter(deps: RouterDeps): Router {
-  // The destination of the most recently queued navigation. Dedupe uses this
-  // rather than the last-committed route: mid-flight, the committed route is
-  // stale, so a rapid second click would either re-queue the same trip or be
-  // silently dropped.
-  let targetRoute: Route = { kind: 'home' };
-  // Serialises overlapping navigations so a fast double-click can't interleave
-  // two transitions / swaps.
+  const runtime = getAppRuntime();
+  let targetRoute: Route = { kind: 'home', location: locationParts(HOME_PATH) };
   let pending: Promise<void> = Promise.resolve();
+  let started = false;
+  let disposed = false;
 
-  async function setHomeState(): Promise<void> {
+  async function setHomeState(route: Extract<Route, { kind: 'home' | 'unknown' }>): Promise<void> {
     await deps.detail.close();
-    document.documentElement.classList.remove(ACTIVE_CLASS);
+    runtime.setRoute(runtimeRoute(route));
     deps.sound?.setScene('home');
     document.title = BASE_TITLE;
   }
 
-  async function applyProject(project: ProjectDetail, immediate: boolean): Promise<void> {
+  async function applyProject(
+    project: ProjectDetail,
+    route: Extract<Route, { kind: 'project' }>,
+    immediate: boolean,
+  ): Promise<void> {
+    // The coordinator projects the only global project-active class. Set the
+    // state before opening so dependent work pauses behind the detail layer.
+    runtime.setRoute(runtimeRoute(route));
     await deps.detail.open(project, { immediate });
-    document.documentElement.classList.add(ACTIVE_CLASS);
     deps.sound?.setScene('project');
     document.title = `${project.title} — ${BASE_TITLE}`;
   }
 
-  /** Write the resolved route to the History stack per `pushMode`. */
-  function commitHistory(route: Route, pushMode: 'push' | 'replace' | 'none'): void {
-    const path = pathForRoute(route);
-    if (pushMode === 'push') {
-      window.history.pushState({ path }, '', path);
-    } else if (pushMode === 'replace') {
-      window.history.replaceState({ path }, '', path);
-    }
+  function commitHistory(location: LocationParts, mode: 'push' | 'replace' | 'none'): void {
+    if (mode === 'push') window.history.pushState({ path: urlFor(location) }, '', urlFor(location));
+    if (mode === 'replace')
+      window.history.replaceState({ path: urlFor(location) }, '', urlFor(location));
   }
 
-  /**
-   * Apply a route change to the DOM at the transition's covered midpoint. The
-   * project (if any) is pre-loaded so the wipe colour matches and we never
-   * fetch twice. `pushMode` controls history; `immediate` skips animation.
-   */
   async function commitRoute(
-    target: Route,
+    route: Route,
     project: ProjectDetail | null,
-    pushMode: 'push' | 'replace' | 'none',
+    mode: 'push' | 'replace' | 'none',
     immediate: boolean,
   ): Promise<void> {
-    if (target.kind === 'project' && project) {
-      commitHistory(target, pushMode);
-      await applyProject(project, immediate);
+    if (route.kind === 'project' && project) {
+      commitHistory(route.location, mode);
+      await applyProject(project, route, immediate);
       return;
     }
-    commitHistory({ kind: 'home' }, pushMode);
-    await setHomeState();
+
+    // Unknown locations normalize to home in history, but remain explicitly
+    // not-found in runtime state. Preserve query and fragment when doing so.
+    const normalized = { ...route.location, pathname: HOME_PATH };
+    commitHistory(normalized, mode);
+    const settledRoute: Extract<Route, { kind: 'home' | 'unknown' }> =
+      route.kind === 'project' ? { kind: 'unknown', location: route.location } : route;
+    await setHomeState(settledRoute);
   }
 
-  /**
-   * Run a route change behind the transition wipe (or instantly when
-   * `immediate`). Loads the target project up front so an unknown slug resolves
-   * to home before any history/animation commits.
-   */
+  function recover(error: unknown, route: Route): Promise<void> {
+    if (disposed) return Promise.resolve();
+    deps.onNavigationError?.(error, urlFor(route.location));
+    console.error('Navigation failed; recovering to home', error);
+    targetRoute = { kind: 'home', location: locationParts(HOME_PATH) };
+    const normalized = { ...route.location, pathname: HOME_PATH };
+    window.history.replaceState({ path: urlFor(normalized) }, '', urlFor(normalized));
+    return setHomeState(targetRoute).catch((recoveryError: unknown) => {
+      console.error('Navigation recovery failed', recoveryError);
+    });
+  }
+
   function runNavigation(
-    target: Route,
-    pushMode: 'push' | 'replace' | 'none',
+    route: Route,
+    mode: 'push' | 'replace' | 'none',
     immediate: boolean,
   ): void {
-    targetRoute = target;
+    if (disposed) return;
+    targetRoute = route;
     pending = pending
       .then(async () => {
-        const project =
-          target.kind === 'project' ? await deps.loadProject(target.slug) : null;
-        // Unknown slug -> home (and rewrite a bad project URL in history).
+        if (disposed) return;
+        const project = route.kind === 'project' ? await deps.loadProject(route.slug) : null;
+        if (disposed) return;
         const resolved: Route =
-          target.kind === 'project' && !project ? { kind: 'home' } : target;
-        const mode = target.kind === 'project' && !project ? 'replace' : pushMode;
-        if (!routesEqual(resolved, target) && routesEqual(targetRoute, target)) {
-          targetRoute = resolved;
-        }
+          route.kind === 'project' && !project
+            ? { kind: 'unknown', location: route.location }
+            : route;
+        if (routesEqual(targetRoute, route)) targetRoute = resolved;
+        const resolvedMode = resolved.kind === 'unknown' ? 'replace' : mode;
 
         if (immediate) {
-          await commitRoute(resolved, project, mode, true);
+          await commitRoute(resolved, project, resolvedMode, true);
           return;
         }
-        const accent = project?.accent;
-        await deps.transition.play(async () => {
-          await commitRoute(resolved, project, mode, false);
-        }, accent);
+        await deps.transition.play(
+          () => commitRoute(resolved, project, resolvedMode, false),
+          project?.accent,
+        );
       })
-      .catch(async () => {
-        // A failed load/open must not wedge the queue for later navigations —
-        // and the recovery itself must never reject, or `pending` stays a
-        // rejected promise and every subsequent navigation is skipped.
-        try {
-          if (routesEqual(targetRoute, target)) targetRoute = { kind: 'home' };
-          await setHomeState();
-        } catch {
-          // Leave the DOM as-is; the next navigation will retry from here.
-        }
-      });
+      .catch((error: unknown) => recover(error, route));
   }
 
   function navigate(path: string, opts?: { replace?: boolean }): void {
-    const target = routeFromPath(path);
-    if (routesEqual(target, targetRoute)) return;
-    runNavigation(target, opts?.replace ? 'replace' : 'push', false);
+    if (disposed) return;
+    const route = routeFromPath(path);
+    if (routesEqual(route, targetRoute)) return;
+    runNavigation(route, opts?.replace ? 'replace' : 'push', false);
   }
 
   function onClick(event: MouseEvent): void {
     const target = event.target instanceof Element ? event.target : null;
     const anchor = target?.closest('a');
-    if (!(anchor instanceof HTMLAnchorElement)) return;
-    if (!anchor.getAttribute('href')?.startsWith(PROJECT_PREFIX)) return;
-    if (!isInterceptableClick(event, anchor)) return;
+    if (!(anchor instanceof HTMLAnchorElement) || !anchor.href) return;
+    const path = anchor.getAttribute('href');
+    if (!path?.startsWith(PROJECT_PREFIX) || !isInterceptableClick(event, anchor)) return;
     event.preventDefault();
-    navigate(anchor.pathname);
+    navigate(`${anchor.pathname}${anchor.search}${anchor.hash}`);
   }
 
   function onPopState(): void {
-    const target = routeFromPath(window.location.pathname);
-    if (routesEqual(target, targetRoute)) return;
-    // History already moved; don't write it again — and animate the change.
-    runNavigation(target, 'none', false);
+    const route = routeFromPath(window.location.href);
+    if (!routesEqual(route, targetRoute)) runNavigation(route, 'none', false);
   }
 
   function start(): void {
+    if (started || disposed) return;
+    started = true;
     document.addEventListener('click', onClick);
     window.addEventListener('popstate', onPopState);
+    const route = routeFromPath(window.location.href);
+    if (route.kind === 'home') {
+      targetRoute = route;
+      runtime.setRoute(runtimeRoute(route));
+      return;
+    }
+    runNavigation(route, 'replace', true);
+  }
 
-    const target = routeFromPath(window.location.pathname);
-    if (target.kind === 'project') {
-      // Deep-link / refresh on a project URL: open immediately (no cover) and
-      // normalise the history entry.
-      runNavigation(target, 'replace', true);
-    } else {
-      // Normalise any junk path to '/'.
-      targetRoute = { kind: 'home' };
-      if (window.location.pathname !== HOME_PATH) {
-        window.history.replaceState({ path: HOME_PATH }, '', HOME_PATH);
-      }
+  function dispose(): void {
+    if (disposed) return;
+    disposed = true;
+    if (started) {
+      document.removeEventListener('click', onClick);
+      window.removeEventListener('popstate', onPopState);
     }
   }
 
-  return { start, navigate };
+  return { start, navigate, dispose };
 }

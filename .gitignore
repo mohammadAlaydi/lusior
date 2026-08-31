@@ -4,6 +4,7 @@ dist/
 .env.local
 *.local
 .DS_Store
+.vercel/
 
 # real lusion.co extracted bundles — measurement reference only, never ship
 reference/
@@ -12,3 +13,22 @@ reference/
 # backend submission storage — written at runtime, never commit
 server/data/*.jsonl
 server/dist/
+
+# Release-test output and disposable runtime data
+playwright-report/
+test-results/
+.tmp/
+
+# QA harness scratch output (grep dumps, probe files, run logs) — the tools
+# (*.mjs) and the committed screenshot sets (qa-shots-*/) stay tracked
+harness/*.log
+harness/*.txt
+harness/_*
+harness/audit-scratch.json
+harness/index.html.gz
+harness/npm_audit.json
+harness/pkg.json
+harness/scan_funcs.cjs
+harness/search.mjs
+harness/tmp_override_test/
+harness/wasm_raw_bytes.bin

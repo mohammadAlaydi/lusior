@@ -85,3 +85,13 @@
   outline: 2px solid var(--color-blue);
   outline-offset: 3px;
 }
+
+/* --- reduced motion: hover states still swap, but snap instead of animate - */
+@media (prefers-reduced-motion: reduce) {
+  .cta-pill,
+  .cta-pill__dot,
+  .cta-pill__text,
+  .cta-pill__arrow {
+    transition-duration: 0.01ms;
+  }
+}

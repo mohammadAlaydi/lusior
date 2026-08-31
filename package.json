@@ -1,23 +1,37 @@
 {
-  "name": "lusion-recreation",
+  "name": "reevez-showcase",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Reevez portfolio — a production TypeScript/WebGL experience with an Express newsletter/contact API",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:all": "npm run build && npm run server:build",
     "preview": "vite preview",
     "server": "tsx watch server/src/index.ts",
     "server:build": "tsc -p server/tsconfig.json",
-    "dev:all": "concurrently -k -n web,api \"npm:dev\" \"npm:server\""
+    "server:start": "node server/dist/server/src/index.js",
+    "start": "npm run server:start",
+    "dev:all": "concurrently -k -n web,api \"npm:dev\" \"npm:server\"",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p server/tsconfig.json && tsc --noEmit -p tsconfig.tools.json",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test:smoke:compiled": "node scripts/production-smoke.mjs",
+    "test:smoke": "npm run build:all && npm run test:smoke:compiled",
+    "test:e2e:compiled": "playwright test",
+    "test:e2e": "npm run build:all && npm run test:e2e:compiled",
+    "test": "npm run typecheck && npm run lint",
+    "verify": "npm run format:check && npm run test && npm run build:all && npm run test:smoke:compiled && npm run test:e2e:compiled"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
   "dependencies": {
-    "@dimforge/rapier3d-compat": "^0.19.3",
+    "@dimforge/rapier3d": "^0.20.0",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "gsap": "^3.15.0",
@@ -26,14 +40,23 @@
     "zod": "^4.0.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.1",
+    "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.10",
     "@types/three": "^0.184.1",
     "concurrently": "^9.2.0",
+    "eslint": "^10.8.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.6",
     "tsx": "^4.20.3",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16"
+    "typescript-eslint": "^8.66.0",
+    "vite": "^8.0.16",
+    "vite-plugin-wasm": "^3.6.0"
   },
   "overrides": {
     "shell-quote": "^1.8.4"

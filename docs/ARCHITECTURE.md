@@ -1,189 +1,127 @@
-# Architecture — CTO brief (2026-07-03)
+# Application architecture
 
-Target architecture for taking this recreation from "very good" to
-pixel-perfect, and for growing it into two apps (main site + labs subdomain)
-without a rewrite. Read `AI-README.md` first; this doc assumes it.
+Current production architecture as of 2026-08-31. This is the source of truth
+for code ownership; deployment details live in
+[PRODUCTION-ARCHITECTURE.md](PRODUCTION-ARCHITECTURE.md).
 
----
+## System shape
 
-## 1. Honest assessment of the status quo
+```text
+Browser
+  └─ src/main.ts (composition root)
+      ├─ AppRuntime: route + overlay + suspension state
+      ├─ UI controllers: menu, router, project detail, reel, featured, video
+      ├─ Scene controllers: hero, tunnel, confetti, trail cursor
+      └─ Shared content client with validated API fallback
 
-### What is already right (keep, do not churn)
-
-- **Per-section module pairs** (`src/ui/<section>.ts` + `src/styles/<section>.css`)
-  — clear ownership, cheap to reason about.
-- **Shared infra actually shared**: `.cta-pill`, `--grid-space` tokens,
-  `splitWords()`, one Lenis+ScrollTrigger clock in `src/ui/scroll.ts`.
-- **Strict TS, green `tsc && vite build`**, explicit export types.
-- **`shared/projects.ts` data contract** consumed by both frontend and the
-  hardened Express backend (zod, rate limits, envelopes).
-- **Reduced-motion invariant** on every animation.
-- **Route-aware detail layer** with History routing + transition wipe.
-
-### The five structural gaps (why "perfect" is currently out of reach)
-
-1. **Three independent WebGL canvases** (`HeroScene`, `TunnelScene`,
-   `endConfetti`) each with their own renderer/loop. The reference runs ONE
-   persistent canvas the whole session; scenes hand off by morphing, and DOM
-   media (featured tiles, gallery items) are WebGL planes that bend/ripple
-   with scroll velocity. Our featured "bend" is a CSS `skewY` approximation
-   (`featured.ts` → `setupScrollBend`) — this is the single most visible
-   fidelity gap on scroll.
-2. **Interaction constants are scattered inline** (`0.035`, `0.12`, lerp
-   factors in `projectDetail.ts` → `attachInteractions`). Tuning "feel"
-   requires an edit-reload loop instead of a live HUD, so constants converge
-   to "close enough", never "identical".
-3. **No app-level state machine.** Router, detail layer, sound, scroll-lock
-   coordinate through ad-hoc callbacks. Every new global state (menu open,
-   labs, deep-link boot) multiplies the edges.
-4. **No quality-tier system.** No GPU detection, no DPR policy, no central
-   place where mobile/low-end trade-offs live.
-5. **Verification is ad-hoc.** `harness/` (untracked) proved its worth for
-   the next-project scroll; it should be a first-class, repeatable tool.
-
----
-
-## 2. Target architecture
-
-### 2.1 Layer model
-
-```
-apps/
-  site/                    ← today's src/ (the lusion.co recreation)
-  labs/                    ← the labs.lusion.co recreation (new)
-packages/
-  core/                    ← clock, viewport, quality tiers, tunables, prefs
-  motion/                  ← lenis+ScrollTrigger wiring, splitWords, easings
-  webgl/                   ← renderer, SceneManager, scene modules, materials
-  ui-kit/                  ← tokens.css, components.css (.cta-pill), fonts
-server/                    ← unchanged (Express API)
-shared/                    ← data contracts (projects, experiments)
-tools/
-  verify/                  ← scripted browser harness + screenshot diffing
+HTTPS edge / CDN
+  └─ one Node 22 process
+      ├─ server/src/index.ts (listen + graceful shutdown only)
+      └─ server/src/app.ts (import-safe Express factory)
+          ├─ /api routes
+          ├─ validated repository-backed submissions
+          └─ compiled SPA + known-route fallback
 ```
 
-Dependency rule (enforced by review, later by `dependency-cruiser`):
-`apps → packages → (nothing)`. Packages never import from apps. `shared/` is
-type-only + data, importable by everything including `server/`.
+This is a modular monolith by design. The site and small form API share a
+release, origin, content contract, and deployment without pretending to need
+distributed infrastructure.
 
-Migrate with **npm workspaces** (`"workspaces": ["apps/*", "packages/*"]`).
-No new tooling (no turbo/nx) until two apps actually exist and hurt.
+## Dependency direction
 
-### 2.2 The persistent canvas + SceneManager (the big milestone)
-
-One `WebGLRenderer`, one `<canvas id="gl">` fixed behind the DOM, one rAF
-(gsap ticker — already the single clock). Scenes become modules:
-
-```ts
-// packages/webgl/src/scene.ts
-export interface SceneModule {
-  id: 'hero' | 'tunnel' | 'confetti' | 'featured-planes';
-  init(ctx: GLContext): Promise<void>;      // compile, alloc — during preloader
-  enter(from: SceneModule | null): void;     // morph choreography in
-  exit(to: SceneModule | null): void;        // morph choreography out
-  update(dt: number, scroll: ScrollState): void;
-  resize(v: Viewport): void;
-  dispose(): void;
-}
+```text
+src/main.ts → src/ui, src/scene, src/audio, src/core, src/data
+src/ui/scene/audio → src/core and shared contracts (never server internals)
+src/data → shared/projects.ts
+server/src → shared/projects.ts
+shared/projects.ts → no browser or server runtime
 ```
 
-- `SceneManager` owns which modules are **active** (several can render at
-  once during a morph), z-order, and shared resources (env maps, common
-  geometries, the postprocessing chain).
-- **DOM-tracked planes**: a `TrackedPlane` helper syncs a WebGL quad to a DOM
-  rect every frame (`getBoundingClientRect` cached + scroll offset). This is
-  how featured tiles and detail-gallery media become real WebGL planes with a
-  vertex-bend shader driven by scroll velocity — replacing the CSS skew.
-- Scroll state is sampled ONCE per frame from Lenis and passed down; scenes
-  never read `window.scrollY` themselves.
+`shared/projects.ts` contains plain types and reviewed data so it compiles under
+both browser bundler resolution and NodeNext. Do not import DOM, filesystem, or
+framework code into `shared/`.
 
-### 2.3 App state machine
+## Browser ownership
 
-A ~60-line FSM, not a library:
+`src/main.ts` is the only composition root. Setup modules return controllers
+when they own observers, animation frames, global listeners, media, or WebGL.
+The composition root propagates runtime suspension and disposes controllers on
+a non-persisted `pagehide`; bfcache navigation keeps them alive for restore.
 
-```ts
-type AppState = 'boot' | 'home' | 'project' | 'menu';
-// transitions declare: allowed targets, scene handoff, sound scene,
-// scroll lock, and which DOM root is inert.
-```
+`src/core/appRuntime.ts` owns the global state that crosses section boundaries:
 
-Router maps URL → target state; the FSM executes the transition (calls
-`transition.play`, `detail.open/close`, `sound.setScene`, Lenis stop/start,
-`is-project-details-active` class). Everything that today lives in router
-callbacks moves here; router becomes pure URL↔state mapping. This is the
-seam that later absorbs "labs" and "menu" without touching existing states.
+- route: home, known project, or not-found;
+- overlay: none, menu, or video;
+- derived background suspension;
+- centralized Escape dispatch (overlay first, project last);
+- the one document class derived from project route state.
 
-### 2.4 Tunables registry + dev HUD (the perfectionism engine)
+DOM classes are outputs of state, not inputs to business logic. New overlays or
+background consumers must integrate through the runtime rather than reading
+unrelated elements.
 
-Every feel constant moves into one typed registry per domain:
+Every expensive consumer combines the relevant gates:
 
-```ts
-// packages/core/src/tunables.ts
-export const FEEL = tunable('projectGallery', {
-  wheelScale: 1.0,        // multiplier on normalized wheel px
-  smoothTau: 0.12,        // s — exp smoothing time constant
-  dragScale: 1.6,
-  flickTauV: 0.6,         // s — momentum decay
-  edgeResistance: 0.35,
-  nextFillPerPx: 1 / 900, // deliberate scroll-to-next
-  nextDrainTau: 0.25,
-  itemRevealAt: 0.85,     // fraction of viewport
-});
-```
+- application suspension (project/menu/video),
+- document visibility,
+- section intersection where applicable,
+- explicit disposal.
 
-In dev builds only, `tunable()` auto-registers a Tweakpane folder
-(lazy-imported, tree-shaken from prod). Tuning session = user scrolls the
-real site on one monitor, ours on the other, drags sliders until identical,
-then the final numbers are committed. This converts fidelity from guesswork
-into measurement (protocol: `PROJECTS-FIDELITY.md`).
+Reduced motion is an independent accessibility contract: it removes ornamental
+motion but preserves navigation and access to all content.
 
-### 2.5 Quality tiers
+## Routing and content
 
-`packages/core/quality.ts`: `detect-gpu` + `devicePixelRatio` cap + input
-type (coarse/fine) + `prefers-reduced-motion` → one frozen `Quality` object
-(`tier: 'high' | 'mid' | 'low' | 'static'`) resolved before first render.
-Scenes and tunables read it; nobody else media-queries ad-hoc.
+The client router accepts `/` and `/projects/:slug`. The production server uses
+the same shared project set before serving the SPA shell, so unknown projects,
+unknown paths, and missing assets are real HTTP 404s.
 
-### 2.6 Verification as a tool, not a ritual
+The home page keeps semantic fallback cards in `index.html`; hydration accepts
+only a complete, unique, validated API list matching the fixed six-slot
+contract. Invalid/network responses fall back to the bundled shared data.
+Production smoke tests verify the DOM/API slug sets, next-project ring, and
+every referenced local media asset.
 
-Promote `harness/` → `tools/verify/`:
+## Server ownership
 
-- `scenarios/*.mjs` — named, scripted user journeys (drive Lenis, pointer
-  gestures, waits) producing screenshots into a gitignored `shots/`.
-- `diff.mjs` — pixelmatch against `golden/` (committed, small, jpg).
-- npm scripts: `verify:projects`, `verify:home`, `verify:all`.
-- Keeps the hard-won rules baked in (drive via `window.__lenis.scrollTo`,
-  foreground-tab requirement, gsap manual tick fallback).
+- `server/src/app.ts`: config resolution, middleware order, repository wiring,
+  static/route policy, 404s, and error envelopes. Safe to import in tests.
+- `server/src/index.ts`: port binding and SIGINT/SIGTERM shutdown only.
+- `server/src/routes.ts`: thin validation/delegation/response handlers.
+- `server/src/repository.ts`: durable storage interface and JSONL adapter.
+- `server/src/security.ts`: CORS, CSP/security headers, and bounded limiter.
 
----
+`DATA_DIR` is the canonical persistence mount. `/api/health` proves liveness;
+`/api/ready` performs a real create/write/fsync/delete probe of that mount.
 
-## 3. Migration plan (phases, each independently shippable)
+## Deployment constraints
 
-| # | Phase | Contents | DoD |
-|---|-------|----------|-----|
-| 0 | **Tunables + HUD** | Extract all feel constants from `featured.ts`, `projectDetail.ts` into registries; Tweakpane dev HUD | Sliders change feel live; prod bundle unchanged size ±2KB |
-| 1 | **Verify tool** | `harness/` → `tools/verify` with scenarios + pixel diff; commit goldens | `npm run verify:projects` passes locally |
-| 2 | **Feel fidelity** | Run the `PROJECTS-FIDELITY.md` protocol with user-captured reference recordings; commit tuned constants | Side-by-side video indistinguishable at 0.5× |
-| 3 | **App FSM** | Introduce state machine; router/detail/sound/scroll-lock rewired through it | All existing flows green in verify tool |
-| 4 | **Workspaces** | Split `packages/{core,motion,webgl,ui-kit}`; `src/` → `apps/site` | `npm run build` green for site; imports via package names |
-| 5 | **Persistent canvas** | SceneManager; migrate hero → tunnel → confetti; then featured tiles + detail gallery as TrackedPlanes with bend shader | One canvas in DOM; scroll-bend is WebGL; 60fps mid-tier |
-| 6 | **Labs app** | `apps/labs` per `LABS-CLONE-PLAN.md` | labs dev server runs; landing matches captures |
+The file repository and in-process limiter make this release deliberately one
+replica. Before horizontal scaling, migrate submissions to managed shared
+storage and abuse control to the edge/shared store. Do not add replicas first.
 
-Order rationale: 0–2 deliver the user-visible "perfectionism" fastest and
-de-risk everything later (you can't verify a refactor without the harness).
-3–4 are pure structure. 5 is the fidelity endgame. 6 rides on 4's rails.
+The supported Compose/platform runtime makes the unprivileged container root
+read-only; only the mounted `/app/data` path is writable.
+TLS, HSTS, public hostname, upstream request controls, and immutable asset cache
+policy are owned by the edge. The application still enforces CSP, compression,
+known-route fallback, no-store API responses, and durable readiness.
 
----
+## Verification boundary
 
-## 4. Conventions (delta on top of existing ones)
+`npm run verify` is the release definition. It includes formatting, all three
+TypeScript configurations, lint, production builds, compiled HTTP/storage/media
+smoke tests, and Playwright desktop/mobile/reduced-motion/accessibility flows.
+Architecture changes are incomplete until the relevant gate is extended.
 
-- New feel constants NEVER inline — always through the tunables registry.
-- Scenes: `dispose()` must release geometry/material/texture (pattern already
-  in HeroScene after the review pass — keep that bar).
-- Every scene/system reads time as `dt` from the ticker — no `Date.now()`
-  deltas, no second rAF loops.
-- DOM reads (`getBoundingClientRect`) batched in resize/scroll handlers that
-  cache — never inside per-frame update paths.
-- `packages/*` are framework-free vanilla TS. No React/Vue anywhere — the
-  DOM-first + vanilla three approach matches the reference's architecture
-  and keeps the bundle honest.
+## Evidence-led future evolution
+
+These are optional optimizations, not prerequisites for the current deploy:
+
+1. Move JSONL/limiting to managed services when a second replica or CRM/ESP
+   integration is actually required.
+2. Use field WebGL/WASM timing to tune the hero quality budget while preserving
+   the separately cached Rapier WASM boundary and visual regression coverage.
+3. Consolidate WebGL renderers behind a scene manager only if profiling shows a
+   material device benefit or the visual roadmap needs cross-scene morphs.
+4. Generate home cards from content data when the fixed six-slot art direction
+   changes; until then the smoke-verified duplicate is intentional.

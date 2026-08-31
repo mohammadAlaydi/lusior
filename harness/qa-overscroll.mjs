@@ -43,7 +43,7 @@ const run = async () => {
 
   // CTA reality check on the advanced (meridian) page
   const cta = await page.evaluate(() => {
-    const a = document.getElementById('project-details-launch-cta');
+    const a = document.querySelector('.project-details-launches--desktop .project-details-launch-cta');
     return a ? { tag: a.tagName, href: a.getAttribute('href'), target: a.getAttribute('target'), rel: a.getAttribute('rel') } : null;
   });
   console.log('CTA:', JSON.stringify(cta));

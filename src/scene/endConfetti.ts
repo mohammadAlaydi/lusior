@@ -10,6 +10,16 @@
 
 type Rng = () => number;
 
+export interface EndConfettiController {
+  setSuspended(suspended: boolean): void;
+  dispose(): void;
+}
+
+const noopController: EndConfettiController = {
+  setSuspended: () => undefined,
+  dispose: () => undefined,
+};
+
 type ShapeKind =
   | 'circle'
   | 'ring'
@@ -200,7 +210,8 @@ function createShapes(rng: Rng): ConfettiShape[] {
     const sizeCapPx = inKeepOut
       ? KEEPOUT_MAX_SIZE
       : dist < KEEPOUT_BUFFER_SCALE
-        ? KEEPOUT_MAX_SIZE + (SIZE_MAX - KEEPOUT_MAX_SIZE) * ((dist - 1) / (KEEPOUT_BUFFER_SCALE - 1))
+        ? KEEPOUT_MAX_SIZE +
+          (SIZE_MAX - KEEPOUT_MAX_SIZE) * ((dist - 1) / (KEEPOUT_BUFFER_SCALE - 1))
         : SIZE_JUMBO_MAX;
     shapes.push(createShape(rng, ux, uy, sizeCapPx));
   }
@@ -341,6 +352,13 @@ class ConfettiField {
   private rafId = 0;
   private running = false;
   private lastTime = 0;
+  private suspended = false;
+  private intersecting = false;
+  private disposed = false;
+  private readonly abortController = new AbortController();
+  private resizeObserver: ResizeObserver | null = null;
+  private intersectionObserver: IntersectionObserver | null = null;
+  private staticRendered = false;
 
   constructor(
     private readonly section: HTMLElement,
@@ -351,23 +369,46 @@ class ConfettiField {
   ) {}
 
   init(): void {
-    const resizeObserver = new ResizeObserver(() => this.resize());
-    resizeObserver.observe(this.inner);
+    this.resizeObserver = new ResizeObserver(() => this.resize());
+    this.resizeObserver.observe(this.inner);
     this.resize();
     if (this.reducedMotion) {
       return; // static frame only — no rAF, no parallax, no repel
     }
-    window.addEventListener('pointermove', this.onPointerMove, { passive: true });
-    document.documentElement.addEventListener('pointerleave', this.onPointerLeave);
-    const intersectionObserver = new IntersectionObserver((entries) => {
-      const latest = entries[entries.length - 1];
-      if (latest && latest.isIntersecting) {
-        this.start();
-      } else {
-        this.stop();
-      }
+    window.addEventListener('pointermove', this.onPointerMove, {
+      passive: true,
+      signal: this.abortController.signal,
     });
-    intersectionObserver.observe(this.section);
+    document.documentElement.addEventListener('pointerleave', this.onPointerLeave, {
+      signal: this.abortController.signal,
+    });
+    document.addEventListener('visibilitychange', this.syncRunning, {
+      signal: this.abortController.signal,
+    });
+    this.intersectionObserver = new IntersectionObserver((entries) => {
+      const latest = entries[entries.length - 1];
+      this.intersecting = Boolean(latest?.isIntersecting);
+      this.syncRunning();
+    });
+    this.intersectionObserver.observe(this.section);
+  }
+
+  setSuspended(suspended: boolean): void {
+    this.suspended = suspended;
+    this.syncRunning();
+  }
+
+  dispose(): void {
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
+    this.stop();
+    this.abortController.abort();
+    this.resizeObserver?.disconnect();
+    this.intersectionObserver?.disconnect();
+    this.resizeObserver = null;
+    this.intersectionObserver = null;
   }
 
   private readonly onPointerMove = (event: PointerEvent): void => {
@@ -390,11 +431,27 @@ class ConfettiField {
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     // Positions live in unit space, so the same seed simply rescales here.
     if (this.reducedMotion) {
-      this.renderStatic();
+      // The lazy wrapper only creates this field once #end is approaching, so
+      // this is deliberately the single reduced-motion paint for the visit.
+      if (!this.staticRendered) {
+        this.staticRendered = true;
+        this.renderStatic();
+      }
     } else if (!this.running) {
       this.render(performance.now() / 1000, 0);
     }
   }
+
+  private readonly syncRunning = (): void => {
+    if (this.disposed || this.reducedMotion) {
+      return;
+    }
+    if (this.suspended || document.hidden || !this.intersecting) {
+      this.stop();
+    } else {
+      this.start();
+    }
+  };
 
   private start(): void {
     if (this.running) {
@@ -478,17 +535,52 @@ class ConfettiField {
  * Wires the confetti field to <canvas id="end-confetti"> inside #end-inner.
  * No-ops when the markup is absent or a 2D context is unavailable.
  */
-export function setupEndConfetti(): void {
+export function setupEndConfetti(): EndConfettiController {
   const section = document.getElementById('end');
   const inner = document.getElementById('end-inner');
   const canvas = document.getElementById('end-confetti');
   if (!section || !inner || !(canvas instanceof HTMLCanvasElement)) {
-    return;
-  }
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    return;
+    return noopController;
   }
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  new ConfettiField(section, inner, canvas, ctx, reducedMotion).init();
+  let field: ConfettiField | null = null;
+  let suspended = false;
+  let disposed = false;
+
+  // Keep the boot path to a single, cheap observer. The canvas context,
+  // backing-store resize, seeded shapes, and first paint are all deferred
+  // until the closing section is genuinely approaching the viewport.
+  const lazyObserver = new IntersectionObserver(
+    (entries) => {
+      if (disposed || field || !entries.some((entry) => entry.isIntersecting)) {
+        return;
+      }
+      lazyObserver.disconnect();
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        return;
+      }
+      field = new ConfettiField(section, inner, canvas, ctx, reducedMotion);
+      field.init();
+      field.setSuspended(suspended);
+    },
+    { rootMargin: '0px 0px 35% 0px' },
+  );
+  lazyObserver.observe(section);
+
+  return {
+    setSuspended(nextSuspended: boolean): void {
+      suspended = nextSuspended;
+      field?.setSuspended(nextSuspended);
+    },
+    dispose(): void {
+      if (disposed) {
+        return;
+      }
+      disposed = true;
+      lazyObserver.disconnect();
+      field?.dispose();
+      field = null;
+    },
+  };
 }

@@ -1,0 +1,55 @@
+services:
+  emryn:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: emryn:local
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 10s
+    ports:
+      # Bind loopback only. Put a TLS reverse proxy or CDN origin in front of
+      # this service; do not expose the application port directly to the web.
+      - '127.0.0.1:${HOST_PORT:-3001}:3001'
+    environment:
+      NODE_ENV: production
+      PORT: '3001'
+      STATIC_DIR: /app/dist
+      DATA_DIR: /app/data
+      # Legacy compatibility alias; DATA_DIR is canonical. Keep equal while
+      # older deployment environments may still provide this name.
+      SUBMISSIONS_DIR: /app/data
+      # Set this to the exact public HTTPS origin before deployment. It is only
+      # relevant for cross-origin browser requests; same-origin requests work
+      # without an Origin header.
+      CORS_ORIGIN: ${CORS_ORIGIN:?set CORS_ORIGIN to the exact public HTTPS origin}
+      # The sample assumes exactly one controlled reverse-proxy hop. Leave 0
+      # when accessing the loopback binding directly.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+    volumes:
+      - emryn-data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # JSONL persistence and application rate limits are intentionally
+    # single-process. Do not increase this until both use shared services.
+    deploy:
+      replicas: 1
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3001/api/ready').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+volumes:
+  emryn-data:
+    name: emryn-data

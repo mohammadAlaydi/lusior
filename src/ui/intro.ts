@@ -21,6 +21,11 @@ export function prepareIntro(): void {
 /** Failsafe: reveal everything immediately (boot errors, reduced motion). */
 export function revealAll(): void {
   gsap.set(REVEALED, { opacity: 1, y: 0 });
+  // Un-mask the headline words too: hero.css parks them translated + rotated
+  // inside overflow-hidden masks, so without this the headline stays blank on
+  // the two paths that skip playIntro (deep-link boot and the boot-failure
+  // handler) — visible as an empty hero after navigating back home.
+  gsap.set('#hero-title .word', { y: 0, rotation: 0 });
 }
 
 /**

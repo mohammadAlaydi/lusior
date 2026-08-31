@@ -26,33 +26,23 @@ export function setupEndSection(): void {
   if (subtitle) {
     const words = splitWords(subtitle);
     gsap.set(words, { yPercent: 120 });
-    timeline.to(
-      words,
-      { yPercent: 0, duration: 0.9, ease: 'power4.out', stagger: 0.04 },
-      0,
-    );
+    timeline.to(words, { yPercent: 0, duration: 0.9, ease: 'power4.out', stagger: 0.04 }, 0);
   }
 
   // title — per-character rise, both lines staggered as one sequence
-  const lineTexts = Array.from(document.querySelectorAll<HTMLElement>('#end-title .end-title-text'));
+  const lineTexts = Array.from(
+    document.querySelectorAll<HTMLElement>('#end-title .end-title-text'),
+  );
   const chars = lineTexts.flatMap((line) => splitChars(line));
   if (chars.length) {
     gsap.set(chars, { yPercent: 110 });
-    timeline.to(
-      chars,
-      { yPercent: 0, duration: 1.0, ease: 'power4.out', stagger: 0.035 },
-      0.2,
-    );
+    timeline.to(chars, { yPercent: 0, duration: 1.0, ease: 'power4.out', stagger: 0.035 }, 0.2);
   }
 
   // decorative strokes draw in once the characters have landed (visible at
   // rest on the real site)
   const decos = document.querySelectorAll<HTMLElement>('.end-deco');
   if (decos.length) {
-    timeline.to(
-      decos,
-      { scaleX: 1, duration: 0.7, ease: 'power4.out', stagger: 0.08 },
-      0.75,
-    );
+    timeline.to(decos, { scaleX: 1, duration: 0.7, ease: 'power4.out', stagger: 0.08 }, 0.75);
   }
 }

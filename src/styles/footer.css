@@ -214,6 +214,11 @@
   height: 100%;
 }
 
+#footer-newsletter-form:focus-within #footer-newsletter-bg {
+  outline: 3px solid var(--color-blue);
+  outline-offset: 3px;
+}
+
 #footer-newsletter-input-field {
   position: relative;
   width: 100%;
@@ -225,6 +230,12 @@
   font-family: inherit;
   color: var(--color-black);
   background: transparent;
+}
+
+#footer-newsletter-input-field:focus-visible {
+  outline: 3px solid var(--color-blue);
+  outline-offset: -3px;
+  border-radius: 1.125em;
 }
 
 #footer-newsletter-input-field::placeholder {
@@ -241,13 +252,26 @@
 #footer-newsletter-input-arrow {
   position: absolute;
   display: inline-block;
-  top: calc(50% - 0.75em);
+  top: calc(50% - 1em);
   right: 1.25em;
-  width: 1.5em;
-  height: 1.5em;
+  width: 2.75em;
+  height: 2.75em;
+  border-radius: 50%;
+  color: var(--color-black);
+  background: transparent;
   padding: 0;
   border: none;
   cursor: pointer;
+}
+
+#footer-newsletter-input-arrow:hover {
+  color: var(--color-white);
+  background: var(--color-black);
+}
+
+#footer-newsletter-input-arrow:focus-visible {
+  outline: 3px solid var(--color-blue);
+  outline-offset: 3px;
 }
 
 #footer-newsletter-input-arrow svg {

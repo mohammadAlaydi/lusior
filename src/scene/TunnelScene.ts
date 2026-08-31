@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getQualityProfile } from '../core/quality';
 
 /**
  * Scroll-scrubbed gem tunnel. The camera flies forward through a long field
@@ -45,7 +46,6 @@ const GLOW_LEAD = 5;
 const TUMBLE_RADIUS = 40;
 const SCRUB_SMOOTHING = 0.08;
 const STATIC_PROGRESS = 0.35;
-const MAX_DPR = 2;
 const MAX_FRAME_DELTA = 0.1;
 const RESIZE_DEBOUNCE_MS = 150;
 
@@ -73,6 +73,7 @@ export class TunnelScene {
   private readonly camera: THREE.PerspectiveCamera;
   private readonly timer = new THREE.Timer();
   private readonly reducedMotion: boolean;
+  private readonly quality = getQualityProfile();
   private readonly seeds: GemSeed[] = [];
 
   private gems?: THREE.InstancedMesh;
@@ -87,6 +88,9 @@ export class TunnelScene {
   private running = false;
   private shouldRun = false;
   private started = false;
+  private suspended = false;
+  private documentVisible = document.visibilityState === 'visible';
+  private readonly abort = new AbortController();
 
   private resizeObserver?: ResizeObserver;
   private resizeTimer = 0;
@@ -96,12 +100,16 @@ export class TunnelScene {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.reducedMotion = this.quality.reducedMotion;
 
     // alpha: true — the canvas is transparent over a near-black CSS backdrop,
     // so the fog colour (same hex) blends gems seamlessly into the page.
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_DPR));
+    this.renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: this.quality.antialias,
+      alpha: true,
+    });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.quality.maxPixelRatio));
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.1;
@@ -127,10 +135,15 @@ export class TunnelScene {
     this.handleResize();
     this.observeResize();
     this.renderFrame();
-
-    if (this.shouldRun && !this.reducedMotion) {
-      this.startLoop();
-    }
+    document.addEventListener(
+      'visibilitychange',
+      () => {
+        this.documentVisible = document.visibilityState === 'visible';
+        this.updateRunState();
+      },
+      { signal: this.abort.signal },
+    );
+    this.updateRunState();
   }
 
   /** 0..1 scrub target, smoothed internally (jump cut under reduced motion). */
@@ -139,25 +152,29 @@ export class TunnelScene {
     if (!this.started) return;
     if (this.reducedMotion) {
       this.actualProgress = this.targetProgress;
-      this.renderFrame();
+      if (!this.suspended && this.documentVisible) this.renderFrame();
     }
   }
 
   /** Runs/pauses the rAF loop. A no-op under reduced motion (no loop ever). */
   setActive(active: boolean): void {
     this.shouldRun = active;
-    if (this.reducedMotion) return;
-    if (active) {
-      this.startLoop();
-    } else {
-      this.stopLoop();
-    }
+    this.updateRunState();
+  }
+
+  /** Pause/resume background rendering while a project or modal owns the UI. */
+  setSuspended(suspended: boolean): void {
+    if (this.suspended === suspended) return;
+    this.suspended = suspended;
+    this.updateRunState();
   }
 
   dispose(): void {
+    this.started = false;
     this.stopLoop();
     window.clearTimeout(this.resizeTimer);
     this.resizeObserver?.disconnect();
+    this.abort.abort();
     if (this.gems) {
       this.scene.remove(this.gems);
       this.gems.dispose(); // releases instanceMatrix/instanceColor buffers
@@ -213,6 +230,17 @@ export class TunnelScene {
 
   // --- frame loop --------------------------------------------------------
 
+  private updateRunState(): void {
+    const shouldAnimate =
+      this.started &&
+      this.shouldRun &&
+      !this.suspended &&
+      this.documentVisible &&
+      !this.reducedMotion;
+    if (shouldAnimate) this.startLoop();
+    else this.stopLoop();
+  }
+
   private startLoop(): void {
     if (!this.started || this.running) return;
     this.running = true;
@@ -227,6 +255,7 @@ export class TunnelScene {
   }
 
   private readonly loop = (now: number): void => {
+    if (!this.running) return;
     this.rafId = requestAnimationFrame(this.loop);
     this.timer.update(now);
     this.elapsed += Math.min(this.timer.getDelta(), MAX_FRAME_DELTA);
@@ -280,7 +309,7 @@ export class TunnelScene {
       window.clearTimeout(this.resizeTimer);
       this.resizeTimer = window.setTimeout(() => {
         this.handleResize();
-        if (!this.running) {
+        if (!this.running && !this.suspended && this.documentVisible) {
           this.renderFrame(); // nothing else repaints while paused
         }
       }, RESIZE_DEBOUNCE_MS);
@@ -293,7 +322,7 @@ export class TunnelScene {
     const rect = target.getBoundingClientRect();
     const width = Math.max(rect.width, 1);
     const height = Math.max(rect.height, 1);
-    const pixelRatio = Math.min(window.devicePixelRatio, MAX_DPR);
+    const pixelRatio = Math.min(window.devicePixelRatio, this.quality.maxPixelRatio);
     const sizeChanged = width !== this.lastWidth || height !== this.lastHeight;
     const pixelRatioChanged = pixelRatio !== this.lastPixelRatio;
     if (!sizeChanged && !pixelRatioChanged) return;
@@ -317,8 +346,7 @@ export class TunnelScene {
 function createGemSeed(index: number): GemSeed {
   const angle = index * GOLDEN_ANGLE + (Math.random() - 0.5) * ANGLE_JITTER;
   // sqrt keeps density roughly uniform across the annulus area
-  const radius =
-    TUBE_RADIUS_MIN + (TUBE_RADIUS_MAX - TUBE_RADIUS_MIN) * Math.sqrt(Math.random());
+  const radius = TUBE_RADIUS_MIN + (TUBE_RADIUS_MAX - TUBE_RADIUS_MIN) * Math.sqrt(Math.random());
   const depth = (index / (GEM_COUNT - 1)) * TUNNEL_DEPTH;
   const position = new THREE.Vector3(
     Math.cos(angle) * radius,

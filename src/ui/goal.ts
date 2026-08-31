@@ -74,9 +74,7 @@ function setupTitleReveal(): void {
 
 /** Per-word rise for the philosophy paragraphs. */
 function setupTextsReveal(): void {
-  const paragraphs = Array.from(
-    document.querySelectorAll<HTMLElement>('.goal-texts-paragraph'),
-  );
+  const paragraphs = Array.from(document.querySelectorAll<HTMLElement>('.goal-texts-paragraph'));
   if (!paragraphs.length) return;
 
   const words = paragraphs.flatMap((paragraph) => splitWords(paragraph));

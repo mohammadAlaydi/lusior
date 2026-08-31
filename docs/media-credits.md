@@ -1,34 +1,35 @@
-# Media credits & licenses (placeholder assets)
+# Media provenance
 
-All media are stand-ins downloaded 2026-06-10 so the site runs "alive" in
-development. Replace them with original productions before any public release,
-or keep + credit as below.
+The production showcase no longer ships third-party sample films, stock art, or
+Picsum stand-ins. Every featured still and video comes only from the corresponding
+product: a public product surface, an authorized staging account, a deterministic
+seeded demo, an official first-party app-store listing, or the native application
+running in an Android emulator. No production account or customer-identifying data
+was used. Confirm client/publication permission for each case study before an
+external launch.
 
-## Videos
+| Output                       | Source material                                                                                                              |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `public/reel/desktop.mp4`    | Silent montage assembled only from the seven product captures and first-party listing edits under `public/media/`            |
+| `public/goal/in.jpg`         | Recrop of the authenticated Envaglo staging ERP capture                                                                      |
+| `public/goal/out.jpg`        | Recrop of the Reevez public seeded-dashboard capture                                                                         |
+| `public/og/reevez.jpg`       | 1200×630 social crop of the Reevez public seeded-dashboard capture                                                           |
+| `public/media/magic-stamp/`  | Live `magicstamp.com`, the Stampi Android launch/login surface, and first-party Magic Stamp Google Play listing screenshots  |
+| `public/media/rahmet-ihsan/` | Live Arabic home and projects-page captures from `rahmetihsan.com`                                                           |
+| `public/media/envaglo/`      | Authorized staging ERP home/accounting/inventory captures plus the working VIP storefront at `stage.envaglo.com/s/vipco/ar`  |
+| `public/media/mawared/`      | Native Mawared Android onboarding captured in the emulator                                                                   |
+| `public/media/mywill/`       | Native Android emulator capture plus first-party screenshots from the published MyWill Google Play listing                   |
+| `public/media/paligram/`     | First-party Play screenshots plus a privacy-safe native emulator crop; the loop edits official stills, not simulated screens |
+| `public/media/reevez/`       | Public `/dashboard-demo` overview, revenue, cash-flow, and sales-pipeline captures with seeded data                          |
 
-| File | Source | Content | License |
-|---|---|---|---|
-| public/reel/desktop.mp4 | media.w3.org/2010/05/sintel/trailer.mp4 | Sintel trailer (Blender Foundation) | CC-BY 3.0 — credit required |
-| public/featured/p1.mp4 | media.w3.org/2010/05/bunny/trailer.mp4 | Big Buck Bunny trailer (Blender Foundation) | CC-BY 3.0 |
-| public/featured/p2.mp4 | media.w3.org/2010/05/video/movie_300.mp4 | W3C sample clip | W3C test media |
-| public/featured/p3.mp4 | copy of reel/desktop.mp4 | (source URL 404'd) | CC-BY 3.0 |
-| public/featured/p4.mp4 | copy of p2.mp4 | (source URL 404'd) | W3C test media |
-| public/featured/p5.mp4 | test-videos.co.uk BBB 720p 10s | Big Buck Bunny excerpt | CC-BY 3.0 |
-| public/featured/p6.mp4 | test-videos.co.uk BBB 1080p 10s | Big Buck Bunny excerpt | CC-BY 3.0 |
+All published loops and the reel are H.264/yuv420p with fast-start metadata and
+no audio track. Keep future replacements under the same
+`public/media/<slug>/` ownership boundary; do not reintroduce generic sample
+footage into the public build.
 
-Blender Foundation attribution: © Blender Foundation | sintel.org /
-bigbuckbunny.org.
-
-## Images
-
-All from Lorem Picsum (https://picsum.photos, Unsplash-sourced, free to use):
-public/goal/in.jpg, public/goal/out.jpg, public/featured/p1–p6.jpg
-(deterministic seed URLs — re-fetch with the same seed for the same image).
-
-## Swapping media
-
-Drop a replacement file with the same name — everything is wired by path:
-- Reel + fullscreen overlay: `public/reel/desktop.mp4`
-- Featured tile N: `public/featured/pN.jpg` (poster) + `pN.mp4` (hover-play)
-- Goal frames: `public/goal/in.jpg`, `public/goal/out.jpg`
-- Future scroll-scrubbed tunnel video (optional): `public/tunnel/`
+Official listing sources: [MyWill on Google Play](https://play.google.com/store/apps/details?id=com.bashsquare.my_will),
+[MyWill on the App Store](https://apps.apple.com/us/app/mywill-digital-legacy/id6771635405),
+[Paligram on Google Play](https://play.google.com/store/apps/details?id=com.messaging.enigma),
+and [Paligram on the App Store](https://apps.apple.com/us/app/paligram/id6702027385).
+Neither current listing includes an official trailer, so the website does not
+mislabel either listing montage as a store-provided video.

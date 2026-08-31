@@ -176,6 +176,19 @@
   }
 }
 
+/* --- reduced motion: hover states still swap, but snap instead of animate - */
+@media (prefers-reduced-motion: reduce) {
+  #sound-btn,
+  #talk-btn,
+  #menu-btn,
+  #talk-btn .talk-arrow,
+  #talk-btn .talk-text,
+  #talk-btn .talk-dot,
+  .menu-dots i {
+    transition-duration: 0.01ms;
+  }
+}
+
 /* keep the pill row inside the viewport on very narrow screens */
 @media (max-width: 480px) {
   #header {

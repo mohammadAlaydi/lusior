@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import RAPIER from '@dimforge/rapier3d-compat';
+import RAPIER from '@dimforge/rapier3d';
+import { getQualityProfile } from '../core/quality';
 import { createJackGeometry, ARM_HALF_LENGTH, ARM_RADIUS } from './jackGeometry';
 
 interface ColorGroup {
@@ -21,6 +22,8 @@ interface JackInstance {
 /** Visible world width at the z=0 plane (world units). Height follows aspect. */
 const WORLD_WIDTH = 25;
 const WORLD_DEPTH = 9;
+/** Vertical margin (world units) between the home layout and the visible edges. */
+const HOME_MARGIN_Y = 1.1;
 const CAMERA_FOV = 32;
 const PHYSICS_STEP = 1 / 60;
 const MAX_SUBSTEPS = 3;
@@ -96,6 +99,8 @@ export class HeroScene {
   private lastTime = 0;
   private rafId = 0;
   private renderDirty = true;
+  /** A one-frame redraw queued for the static reduced-motion path. */
+  private staticRenderScheduled = false;
   private lastWidth = 0;
   private lastHeight = 0;
   private lastPixelRatio = 0;
@@ -108,19 +113,30 @@ export class HeroScene {
   private contextLost = false;
   /** Whether the rAF loop is currently scheduled. */
   private running = false;
+  /** False until physics, meshes and event gates are fully initialised. */
+  private started = false;
+  /** App-level project/menu/video modes pause background simulation. */
+  private suspended = false;
+  /** Explicit tab visibility gate (in addition to viewport intersection). */
+  private documentVisible = document.visibilityState === 'visible';
   private readonly abort = new AbortController();
   private readonly disposables: Array<{ dispose(): void }> = [];
   private readonly reducedMotion: boolean;
+  private readonly quality = getQualityProfile();
 
   constructor(canvas: HTMLCanvasElement, container: HTMLElement) {
     this.container = container;
-    this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.reducedMotion = this.quality.reducedMotion;
 
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: this.quality.antialias,
+      alpha: false,
+    });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.quality.maxPixelRatio));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.4;
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = this.quality.shadowsEnabled;
     // three 0.184 deprecates PCFSoftShadowMap and force-downgrades it to
     // PCFShadowMap at runtime (with a console warning) — set it directly to
     // get the same result with zero warning. shadow.radius (below) still
@@ -136,9 +152,8 @@ export class HeroScene {
     this.setupLights();
   }
 
-  /** Async boot: loads the physics WASM module, then builds the scene. */
-  async start(): Promise<void> {
-    await RAPIER.init();
+  /** Build after the async HeroScene module import has initialized Rapier WASM. */
+  start(): void {
     // Zero gravity: the cluster floats; home springs do all the shaping.
     this.world = new RAPIER.World(new RAPIER.Vector3(0, 0, 0));
 
@@ -147,10 +162,13 @@ export class HeroScene {
     this.spawnJacks();
     this.bindEvents();
 
+    this.started = true;
     this.updateRunState();
   }
 
   dispose(): void {
+    this.started = false;
+    this.running = false;
     cancelAnimationFrame(this.rafId);
     window.clearTimeout(this.resizeTimer);
     this.resizeObserver?.disconnect();
@@ -162,6 +180,13 @@ export class HeroScene {
     this.scene.environment?.dispose();
     this.world?.free();
     this.renderer.dispose();
+  }
+
+  /** Pause/resume background GPU + physics work from the application runtime. */
+  setSuspended(suspended: boolean): void {
+    if (this.suspended === suspended) return;
+    this.suspended = suspended;
+    this.updateRunState();
   }
 
   // --- scene setup -------------------------------------------------------
@@ -179,8 +204,8 @@ export class HeroScene {
 
     const key = new THREE.DirectionalLight(0xffffff, 3.0);
     key.position.set(-10, 14, 18);
-    key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048);
+    key.castShadow = this.quality.shadowsEnabled;
+    key.shadow.mapSize.set(this.quality.shadowMapSize, this.quality.shadowMapSize);
     key.shadow.camera.left = -20;
     key.shadow.camera.right = 20;
     key.shadow.camera.top = 18;
@@ -213,9 +238,7 @@ export class HeroScene {
 
     // shuffled spawn order so the four colours interleave across the cluster
     const order = shuffle(
-      GROUPS.flatMap((group, groupIndex) =>
-        Array.from({ length: group.count }, () => groupIndex),
-      ),
+      GROUPS.flatMap((group, groupIndex) => Array.from({ length: group.count }, () => groupIndex)),
     );
 
     const meshes = this.createJackMeshes(geometry);
@@ -261,9 +284,8 @@ export class HeroScene {
     const cols = 7;
     const rows = Math.ceil(total / cols);
     const marginX = 1.4;
-    const marginY = 1.1;
     const usableW = WORLD_WIDTH - marginX * 2;
-    const usableH = Math.max(this.worldHeight - marginY * 2, 4);
+    const usableH = usableHomeHeight(this.worldHeight);
     const cellW = usableW / cols;
     const cellH = usableH / rows;
     const zMax = WORLD_DEPTH / 2 - ARM_HALF_LENGTH;
@@ -273,7 +295,7 @@ export class HeroScene {
       const col = cell % cols;
       const row = Math.floor(cell / cols);
       const x = -usableW / 2 + (col + 0.5) * cellW + (Math.random() - 0.5) * cellW * 0.7;
-      const y = marginY + (row + 0.5) * cellH + (Math.random() - 0.5) * cellH * 0.7;
+      const y = HOME_MARGIN_Y + (row + 0.5) * cellH + (Math.random() - 0.5) * cellH * 0.7;
       const zBase = ((col + row) % 2 === 0 ? -1 : 1) * 1.4;
       const z = THREE.MathUtils.clamp(zBase + (Math.random() - 0.5) * 1.6, -zMax, zMax);
       return new THREE.Vector3(x, y, z);
@@ -381,10 +403,7 @@ export class HeroScene {
       const body = this.world.createRigidBody(
         RAPIER.RigidBodyDesc.fixed().setTranslation(...wall.pos),
       );
-      this.world.createCollider(
-        RAPIER.ColliderDesc.cuboid(...wall.size).setFriction(0.7),
-        body,
-      );
+      this.world.createCollider(RAPIER.ColliderDesc.cuboid(...wall.size).setFriction(0.7), body);
       this.boundaryBodies.push(body);
     }
   }
@@ -426,6 +445,7 @@ export class HeroScene {
     canvas.addEventListener(
       'pointerdown',
       (event) => {
+        if (this.reducedMotion) return;
         const p = this.pointToWorld(event);
         if (p) this.burst(p);
       },
@@ -450,6 +470,15 @@ export class HeroScene {
       { threshold: 0 },
     );
     this.visibilityObserver.observe(this.container);
+
+    document.addEventListener(
+      'visibilitychange',
+      () => {
+        this.documentVisible = document.visibilityState === 'visible';
+        this.updateRunState();
+      },
+      { signal },
+    );
 
     // WebGL context loss: prevent the default (which would otherwise
     // permanently drop the context) and pause the loop. On restore, force a
@@ -526,13 +555,45 @@ export class HeroScene {
   // --- frame loop --------------------------------------------------------
 
   /**
-   * Derives shouldRun from visibility + context-loss state and starts/stops
-   * the rAF loop to match. Resuming resets the physics accumulator and the
-   * frame-delta clock so a long pause doesn't burn through a burst of
-   * catch-up substeps.
+   * Derives run state from visibility + context-loss state. Reduced motion
+   * gets a one-frame static render only; all other modes run the physics loop.
+   * Resuming the animated loop resets the physics accumulator and frame clock
+   * so a long pause doesn't burn through a burst of catch-up substeps.
    */
   private updateRunState(): void {
-    const shouldRun = this.intersecting && !this.contextLost;
+    const canRender =
+      this.started &&
+      this.intersecting &&
+      this.documentVisible &&
+      !this.contextLost &&
+      !this.suspended;
+
+    if (this.reducedMotion) {
+      if (this.running) {
+        this.running = false;
+        cancelAnimationFrame(this.rafId);
+        this.rafId = 0;
+      }
+      if (!canRender) {
+        if (this.staticRenderScheduled) {
+          cancelAnimationFrame(this.rafId);
+          this.rafId = 0;
+          this.staticRenderScheduled = false;
+        }
+        return;
+      }
+      // Lifecycle transitions may invalidate the canvas even when its CSS
+      // dimensions did not change, so each return to a renderable state gets
+      // one static frame. This never steps Rapier or reschedules itself.
+      this.renderDirty = true;
+      if (!this.staticRenderScheduled) {
+        this.staticRenderScheduled = true;
+        this.rafId = requestAnimationFrame(this.renderStaticFrame);
+      }
+      return;
+    }
+
+    const shouldRun = canRender;
     if (shouldRun === this.running) return;
     this.running = shouldRun;
     if (shouldRun) {
@@ -546,7 +607,26 @@ export class HeroScene {
     }
   }
 
+  private readonly renderStaticFrame = (): void => {
+    this.staticRenderScheduled = false;
+    this.rafId = 0;
+    if (
+      !this.started ||
+      !this.intersecting ||
+      !this.documentVisible ||
+      this.contextLost ||
+      this.suspended ||
+      !this.renderDirty
+    ) {
+      return;
+    }
+    this.syncMeshes();
+    this.renderer.render(this.scene, this.camera);
+    this.renderDirty = false;
+  };
+
   private readonly loop = (now: number): void => {
+    if (!this.running) return;
     const dt = Math.min((now - this.lastTime) / 1000, 0.1);
     this.lastTime = now;
     this.accumulator = Math.min(this.accumulator + dt, PHYSICS_STEP * MAX_SUBSTEPS);
@@ -596,9 +676,18 @@ export class HeroScene {
       const drift = this.reducedMotion ? 0 : DRIFT_ACCEL;
 
       // home spring + idle drift, expressed as acceleration (per unit mass)
-      let ax = SPRING_STIFFNESS * (home.x - pos.x) - SPRING_DAMPING * vel.x + drift * Math.sin(t * f.x + p.x);
-      let ay = SPRING_STIFFNESS * (home.y - pos.y) - SPRING_DAMPING * vel.y + drift * Math.sin(t * f.y + p.y);
-      const az = SPRING_STIFFNESS * (home.z - pos.z) - SPRING_DAMPING * vel.z + drift * Math.sin(t * f.z + p.z);
+      let ax =
+        SPRING_STIFFNESS * (home.x - pos.x) -
+        SPRING_DAMPING * vel.x +
+        drift * Math.sin(t * f.x + p.x);
+      let ay =
+        SPRING_STIFFNESS * (home.y - pos.y) -
+        SPRING_DAMPING * vel.y +
+        drift * Math.sin(t * f.y + p.y);
+      const az =
+        SPRING_STIFFNESS * (home.z - pos.z) -
+        SPRING_DAMPING * vel.z +
+        drift * Math.sin(t * f.z + p.z);
 
       // Cursor acts like a moving paddle. Each nearby jack is pushed along the
       // contact normal (cursor -> jack); the impulse sums a gentle always-on
@@ -659,7 +748,7 @@ export class HeroScene {
     const rect = this.container.getBoundingClientRect();
     const width = Math.max(rect.width, 1);
     const height = Math.max(rect.height, 1);
-    const pixelRatio = Math.min(window.devicePixelRatio, 2);
+    const pixelRatio = Math.min(window.devicePixelRatio, this.quality.maxPixelRatio);
     const sizeChanged = width !== this.lastWidth || height !== this.lastHeight;
     const pixelRatioChanged = pixelRatio !== this.lastPixelRatio;
     if (!sizeChanged && !pixelRatioChanged) return;
@@ -671,7 +760,9 @@ export class HeroScene {
     }
     const aspect = width / height;
 
+    const prevWorldHeight = this.worldHeight;
     this.worldHeight = WORLD_WIDTH / aspect;
+    if (this.worldHeight !== prevWorldHeight) this.refitHomes(prevWorldHeight);
 
     // Longer lens on wide viewports, wider on tall ones — the real site fits
     // FOV to aspect (≈18° widescreen … 30° portrait). A narrow FOV flattens
@@ -695,7 +786,37 @@ export class HeroScene {
 
     this.renderer.setSize(width, height, false);
     this.renderDirty = true;
+    this.updateRunState();
   }
+
+  /**
+   * Homes are laid out for the world height measured at the time; after an
+   * aspect change (e.g. phone rotation portrait -> landscape) the old rows
+   * can sit far outside the new visible volume and the springs would pin
+   * jacks offscreen forever. The layout is linear in the usable vertical
+   * span, so remapping that span re-derives each home exactly; x and z come
+   * from the constant world width/depth and never move.
+   */
+  private refitHomes(prevWorldHeight: number): void {
+    const scale = usableHomeHeight(this.worldHeight) / usableHomeHeight(prevWorldHeight);
+    for (const jack of this.jacks) {
+      jack.home.y = HOME_MARGIN_Y + (jack.home.y - HOME_MARGIN_Y) * scale;
+      if (this.reducedMotion) {
+        // Static mode never steps Rapier, so a home remap must move the body
+        // directly instead of waiting for the normal spring simulation.
+        jack.body.setTranslation(jack.home, false);
+        jack.body.setLinvel({ x: 0, y: 0, z: 0 }, false);
+        jack.body.setAngvel({ x: 0, y: 0, z: 0 }, false);
+      } else {
+        jack.body.wakeUp();
+      }
+    }
+  }
+}
+
+/** Vertical span the home layout may occupy for a given visible height. */
+function usableHomeHeight(worldHeight: number): number {
+  return Math.max(worldHeight - HOME_MARGIN_Y * 2, 4);
 }
 
 /** Linear remap of value from [inA,inB] to [outA,outB], clamped to the output. */

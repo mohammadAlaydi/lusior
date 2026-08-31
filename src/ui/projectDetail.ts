@@ -13,15 +13,19 @@ import { splitWords } from './splitWords';
  * It is intentionally self-contained — the router drives it via `open`/`close`
  * and reacts to `onRequestProject` / `onRequestClose`. All motion is
  * transform/opacity only, with a `prefers-reduced-motion` fast path that snaps
- * to the final state and uses native scrolling.
+ * to the final state — native scrolling on mobile, and the same wheel/drag/
+ * keyboard gallery input on desktop applied instantly (no smoothing).
  */
 
 import type { SoundEngine } from '../audio/soundEngine';
+import { getAppRuntime } from '../core/appRuntime';
+import { getLenis } from './scroll';
 
 export interface ProjectDetailController {
   open(detail: ProjectDetail, opts?: { immediate?: boolean }): Promise<void>;
   close(opts?: { immediate?: boolean }): Promise<void>;
   isOpen(): boolean;
+  dispose(): void;
 }
 
 export interface ProjectDetailDeps {
@@ -32,7 +36,7 @@ export interface ProjectDetailDeps {
   onRequestClose: () => void;
 }
 
-/** Breakpoint (px) at or below which we stop hijacking scroll (CSS `812px`). */
+/** Breakpoint (px) at or below which the case study becomes a vertical layout. */
 const MOBILE_MAX = 812;
 /** Forward over-scroll (px) past `maxScroll` that fills `nextProjectRatio`.
  * Deliberately long: on the reference the "Next" bar fills over a sustained
@@ -71,15 +75,6 @@ const THEME_VARS: ReadonlyArray<[keyof ProjectDetail['theme'], string]> = [
   ['iconBg', '--project-details-icon-bg'],
   ['iconColor', '--project-details-icon-color'],
 ];
-
-interface LenisLike {
-  stop: () => void;
-  start: () => void;
-}
-
-function getLenis(): LenisLike | undefined {
-  return (window as typeof window & { __lenis?: LenisLike }).__lenis;
-}
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -125,43 +120,29 @@ function buildSideListGroup(group: SideListGroup): string {
   );
 }
 
-function buildLaunchCta(detail: ProjectDetail): string {
-  if (!detail.launchUrl) return '';
-  const label = escapeHtml(detail.launchLabel ?? 'Launch website');
-  const href = safeUrl(detail.launchUrl);
-  // Internal ('/'-prefixed) targets navigate in-app (see the click-intercept
-  // in attachInteractions) — only external targets get a new tab.
-  const attrs = isInternalUrl(detail.launchUrl) ? '' : ' target="_blank" rel="noopener noreferrer"';
-  return (
-    `<a id="project-details-launch-cta" href="${href}"${attrs}>` +
-    '<span id="project-details-launch-cta-dot" aria-hidden="true"></span>' +
-    `<p id="project-details-launch-cta-text">${label}</p>` +
-    `<span id="project-details-launch-cta-arrow" aria-hidden="true">${ARROW_SVG}</span>` +
-    '</a>'
-  );
-}
+function buildLaunchCtas(detail: ProjectDetail, variant: 'desktop' | 'mobile'): string {
+  const links = detail.launches
+    .map((launch) => {
+      const href = safeUrl(launch.url);
+      // External destinations navigate this tab directly. Internal targets are
+      // marked so attachInteractions can hand them back to the app router.
+      const attrs = isInternalUrl(launch.url) ? ' data-internal-launch="true"' : '';
+      return (
+        `<a class="project-details-launch-cta" href="${href}"${attrs}>` +
+        '<span class="project-details-launch-cta-dot" aria-hidden="true"></span>' +
+        `<span class="project-details-launch-cta-text">${escapeHtml(launch.label)}</span>` +
+        `<span class="project-details-launch-cta-arrow" aria-hidden="true">${ARROW_SVG}</span>` +
+        '</a>'
+      );
+    })
+    .join('');
 
-function buildLaunchCtaMobile(detail: ProjectDetail): string {
-  if (!detail.launchUrl) return '';
-  const label = escapeHtml(detail.launchLabel ?? 'Launch website');
-  const href = safeUrl(detail.launchUrl);
-  const attrs = isInternalUrl(detail.launchUrl) ? '' : ' target="_blank" rel="noopener noreferrer"';
-  return (
-    `<a id="project-details-launch-cta-mobile" href="${href}"${attrs}>` +
-    '<span id="project-details-launch-cta-mobile-dot" aria-hidden="true"></span>' +
-    `<p id="project-details-launch-cta-mobile-text">${label}</p>` +
-    `<span id="project-details-launch-cta-mobile-arrow" aria-hidden="true">${ARROW_SVG}</span>` +
-    '</a>'
-  );
+  return `<div class="project-details-launches project-details-launches--${variant}">${links}</div>`;
 }
 
 function buildMeta(detail: ProjectDetail): string {
-  const desc = detail.description
-    .map((p) => `<p>${escapeHtml(p)}</p>`)
-    .join('');
-  const groups = detail.sideLists
-    .map((group) => buildSideListGroup(group))
-    .join('');
+  const desc = detail.description.map((p) => `<p>${escapeHtml(p)}</p>`).join('');
+  const groups = detail.sideLists.map((group) => buildSideListGroup(group)).join('');
 
   return (
     '<div id="project-details-meta">' +
@@ -171,9 +152,9 @@ function buildMeta(detail: ProjectDetail): string {
     '</div>' +
     '<div id="project-details-right">' +
     `<div id="project-details-side-list">${groups}</div>` +
-    buildLaunchCta(detail) +
+    buildLaunchCtas(detail, 'desktop') +
     '</div>' +
-    buildLaunchCtaMobile(detail) +
+    buildLaunchCtas(detail, 'mobile') +
     '</div>'
   );
 }
@@ -196,8 +177,9 @@ function buildMediaItem(item: MediaItem): string {
     : '';
 
   if (item.kind === 'image') {
+    const fit = item.fit ? ` data-fit="${escapeAttr(item.fit)}"` : '';
     return (
-      `<div class="project-details-item" data-kind="image" ${sizeStyle}>` +
+      `<div class="project-details-item" data-kind="image"${fit} ${sizeStyle}>` +
       `<img class="project-details-item-media" src="${safeUrl(item.src)}" ` +
       `alt="${escapeAttr(item.alt)}" loading="lazy" draggable="false" />` +
       caption +
@@ -207,8 +189,9 @@ function buildMediaItem(item: MediaItem): string {
 
   if (item.kind === 'video') {
     const poster = item.poster ? ` poster="${safeUrl(item.poster)}"` : '';
+    const fit = item.fit ? ` data-fit="${escapeAttr(item.fit)}"` : '';
     return (
-      `<div class="project-details-item" data-kind="video" ${sizeStyle}>` +
+      `<div class="project-details-item" data-kind="video"${fit} ${sizeStyle}>` +
       `<video class="project-details-item-media" src="${safeUrl(item.src)}"${poster} ` +
       `muted loop playsinline preload="metadata" aria-label="${escapeAttr(item.alt)}"></video>` +
       caption +
@@ -256,10 +239,7 @@ function buildPreview(nextTitle: string): string {
 }
 
 function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function escapeAttr(value: string): string {
@@ -291,17 +271,17 @@ function isInternalUrl(value: string): boolean {
 
 /** Map a known side-list link name to a real external URL (no dead `#` tabs). */
 const SIDE_LIST_LINK_URLS: ReadonlyArray<[string, string]> = [
-  ['Instagram', 'https://instagram.com'],
-  ['Twitter / X', 'https://x.com'],
-  ['LinkedIn', 'https://www.linkedin.com'],
-  ['GitHub', 'https://github.com'],
+  ['Instagram', 'https://instagram.com/reevez_business'],
+  ['Twitter / X', 'https://x.com/reevez_business'],
+  ['LinkedIn', 'https://www.linkedin.com/company/reevezai'],
+  ['Case Studies', 'https://reevez.com/case-studies'],
 ];
 
 function sideListLinkUrl(name: string): string {
   for (const [key, url] of SIDE_LIST_LINK_URLS) {
     if (key === name) return url;
   }
-  return 'https://example.com';
+  return 'https://reevez.com';
 }
 
 /** Allowlist for inline media width/height values; fall back to 'auto'. */
@@ -316,6 +296,7 @@ function safeDimension(value: string): string {
 // ---------------------------------------------------------------------------
 
 export function setupProjectDetail(deps: ProjectDetailDeps): ProjectDetailController {
+  const runtime = getAppRuntime();
   const root = document.getElementById('project-details');
   const backBtn = document.getElementById('header-center-project-back-btn');
   const headerInfo = document.getElementById('project-details-header-info');
@@ -326,16 +307,18 @@ export function setupProjectDetail(deps: ProjectDetailDeps): ProjectDetailContro
       open: () => Promise.resolve(),
       close: () => Promise.resolve(),
       isOpen: () => false,
+      dispose: () => undefined,
     };
   }
 
   let open = false;
+  let disposed = false;
   let current: ProjectDetail | null = null;
   let lastTrigger: HTMLElement | null = null;
   let detach: (() => void) | null = null;
   // Elements (siblings of the detail layer under #ui) made `inert` while open,
   // so focus stays contained in the region. Restored exactly on close.
-  let inertedChildren: HTMLElement[] = [];
+  let inertedChildren: Array<{ element: HTMLElement; wasInert: boolean }> = [];
 
   /**
    * Make every #ui child inert except #header, #header-menu and
@@ -349,15 +332,16 @@ export function setupProjectDetail(deps: ProjectDetailDeps): ProjectDetailContro
     inertedChildren = [];
     for (const child of Array.from(ui.children)) {
       if (!(child instanceof HTMLElement)) continue;
-      if (child.id === 'header' || child.id === 'header-menu' || child.id === 'project-details') continue;
+      if (child.id === 'header' || child.id === 'header-menu' || child.id === 'project-details')
+        continue;
+      inertedChildren.push({ element: child, wasInert: child.inert });
       child.inert = true;
-      inertedChildren.push(child);
     }
   }
 
   /** Reverse applyInert() exactly. */
   function clearInert(): void {
-    for (const child of inertedChildren) child.inert = false;
+    for (const { element, wasInert } of inertedChildren) element.inert = wasInert;
     inertedChildren = [];
   }
 
@@ -384,14 +368,15 @@ export function setupProjectDetail(deps: ProjectDetailDeps): ProjectDetailContro
     if (trigger) lastTrigger = trigger;
   }
 
-  async function doOpen(
-    detail: ProjectDetail,
-    opts?: { immediate?: boolean },
-  ): Promise<void> {
-    if (!root) return;
+  async function doOpen(detail: ProjectDetail, opts?: { immediate?: boolean }): Promise<void> {
+    if (!root || disposed) return;
+    const wasOpen = open;
     // Re-entrancy guard: open() called while already open must tear down the
     // existing interaction layer first (prevents a duplicate listener leak).
-    if (open) {
+    // Preserve the original inert snapshot across project-to-project routes;
+    // re-snapshotting here would record the already-inert page and leave it
+    // permanently inert when the final project closes.
+    if (wasOpen) {
       detach?.();
       detach = null;
     }
@@ -401,7 +386,7 @@ export function setupProjectDetail(deps: ProjectDetailDeps): ProjectDetailContro
     setTheme(detail);
     const nextTitle = findProject(detail.nextSlug)?.title ?? detail.title;
     root.innerHTML = buildMeta(detail) + buildGallery(detail) + buildPreview(nextTitle);
-    root.classList.toggle('has-cta', Boolean(detail.launchUrl));
+    root.classList.toggle('has-ctas', detail.launches.length > 0);
     root.setAttribute('role', 'region');
     root.setAttribute('aria-label', `${detail.title} project details`);
     root.setAttribute('aria-hidden', 'false');
@@ -412,10 +397,8 @@ export function setupProjectDetail(deps: ProjectDetailDeps): ProjectDetailContro
 
     current = detail;
     open = true;
-    document.documentElement.classList.add('is-project-details-active');
-    applyInert();
+    if (!wasOpen) applyInert();
     getLenis()?.stop();
-    document.addEventListener('keydown', onKeyDown);
 
     const reduced = prefersReducedMotion();
     const immediate = opts?.immediate === true || reduced;
@@ -436,12 +419,11 @@ export function setupProjectDetail(deps: ProjectDetailDeps): ProjectDetailContro
   }
 
   async function doClose(opts?: { immediate?: boolean }): Promise<void> {
-    if (!root || !open) return;
+    if (!root || !open || disposed) return;
     open = false;
     // Tell AT the region is gone at once, before the close animation resolves.
     root.setAttribute('aria-hidden', 'true');
     clearInert();
-    document.removeEventListener('keydown', onKeyDown);
     detach?.();
     detach = null;
 
@@ -450,10 +432,9 @@ export function setupProjectDetail(deps: ProjectDetailDeps): ProjectDetailContro
     await runCloseChoreography(root, backBtn, headerInfo, immediate);
 
     root.innerHTML = '';
-    root.classList.remove('has-cta');
+    root.classList.remove('has-ctas');
     root.setAttribute('aria-hidden', 'true');
     clearTheme();
-    document.documentElement.classList.remove('is-project-details-active');
     if (backBtn) backBtn.setAttribute('aria-hidden', 'true');
     getLenis()?.start();
     current = null;
@@ -467,24 +448,44 @@ export function setupProjectDetail(deps: ProjectDetailDeps): ProjectDetailContro
     restoreTarget?.focus({ preventScroll: true });
   }
 
-  function onKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      deps.onRequestClose();
-    }
+  // Escape dispatch is centralized by the application runtime. This handler
+  // only runs after video and menu overlays have had priority.
+  const unregisterEscape = runtime.registerEscapeHandler('project', () => {
+    if (open) deps.onRequestClose();
+  });
+
+  const onBackClick = (): void => {
+    deps.sound?.playUI('click');
+    deps.onRequestClose();
+  };
+  if (backBtn) {
+    backBtn.addEventListener('click', onBackClick);
   }
 
-  if (backBtn) {
-    backBtn.addEventListener('click', () => {
-      deps.sound?.playUI('click');
-      deps.onRequestClose();
-    });
+  function dispose(): void {
+    if (disposed) return;
+    disposed = true;
+    unregisterEscape();
+    backBtn?.removeEventListener('click', onBackClick);
+    detach?.();
+    detach = null;
+    clearInert();
+    open = false;
+    current = null;
+    if (root) {
+      root.innerHTML = '';
+      root.classList.remove('has-ctas');
+      root.setAttribute('aria-hidden', 'true');
+    }
+    clearTheme();
+    if (backBtn) backBtn.setAttribute('aria-hidden', 'true');
   }
 
   return {
     open: doOpen,
     close: doClose,
     isOpen: () => open,
+    dispose,
   };
 }
 
@@ -502,9 +503,7 @@ function runOpenChoreography(
   const title = root.querySelector<HTMLElement>('#project-details-title');
   const desc = root.querySelectorAll<HTMLElement>('#project-details-desc p');
   const sideGroups = root.querySelectorAll<HTMLElement>('.project-details-side-list-group');
-  const ctas = root.querySelectorAll<HTMLElement>(
-    '#project-details-launch-cta, #project-details-launch-cta-mobile',
-  );
+  const ctas = root.querySelectorAll<HTMLElement>('.project-details-launch-cta');
 
   // Split the title for the masked rise. splitWords -> .word-mask > .word.
   const words = title ? splitWords(title) : [];
@@ -513,10 +512,8 @@ function runOpenChoreography(
 
   if (immediate) {
     gsap.set(words, { yPercent: 0, opacity: 1 });
-    gsap.set([desc, sideGroups, ctas].filter(Boolean) as ArrayLike<HTMLElement>[], {
-      y: 0,
-      opacity: 1,
-    });
+    const revealTargets = [...desc, ...sideGroups, ...ctas];
+    if (revealTargets.length) gsap.set(revealTargets, { y: 0, opacity: 1 });
     if (backBtn) gsap.set(backBtn, { scale: 1 });
     if (headerInfo) gsap.set(headerInfo, { opacity: 1 });
     return;
@@ -526,7 +523,12 @@ function runOpenChoreography(
   // contentShowRatio 0->1 conceptually drives all of these on one timeline.
   tl.fromTo(words, { yPercent: 110 }, { yPercent: 0, duration: 0.9, stagger: 0.05 }, 0);
   if (desc.length) {
-    tl.fromTo(desc, { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, stagger: 0.08 }, 0.25);
+    tl.fromTo(
+      desc,
+      { y: 18, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.7, stagger: 0.08 },
+      0.25,
+    );
   }
   if (sideGroups.length) {
     tl.fromTo(
@@ -586,29 +588,29 @@ function attachInteractions(args: InteractionDeps): () => void {
   const { root, deps, getNext, reduced } = args;
   const moveContainer = root.querySelector<HTMLElement>('#project-details-items-move-container');
   const wrapper = root.querySelector<HTMLElement>('#project-details-items-wrapper');
-  const previewBarInner = root.querySelector<HTMLElement>('#project-details-preview-footer-bar-inner');
+  const previewBarInner = root.querySelector<HTMLElement>(
+    '#project-details-preview-footer-bar-inner',
+  );
   const items = Array.from(root.querySelectorAll<HTMLElement>('.project-details-item'));
 
   const cleanups: Array<() => void> = [];
 
   // Launch CTA hover SFX (delegated so it survives rebuild).
-  const cta = root.querySelector<HTMLElement>('#project-details-launch-cta');
-  if (cta && deps.sound) {
-    const onEnter = (): void => deps.sound?.playUI('hover');
-    cta.addEventListener('pointerenter', onEnter);
-    cleanups.push(() => cta.removeEventListener('pointerenter', onEnter));
+  const ctas = root.querySelectorAll<HTMLElement>('.project-details-launch-cta');
+  if (deps.sound) {
+    for (const cta of Array.from(ctas)) {
+      const onEnter = (): void => deps.sound?.playUI('hover');
+      cta.addEventListener('pointerenter', onEnter);
+      cleanups.push(() => cta.removeEventListener('pointerenter', onEnter));
+    }
   }
 
-  // Internal ('/'-prefixed) launch URLs — currently only Northwind's, whose
-  // copy says the studio site IS this site — render with no target="_blank"
-  // (see buildLaunchCta/buildLaunchCtaMobile). Intercept their click and reuse
-  // the existing close path instead of a full reload; externals keep
-  // target="_blank" and are left to native browser handling.
+  // Internal launch URLs reuse the existing close path. External destinations
+  // are ordinary same-tab anchors and are left to native browser navigation.
   const ctaAnchors = root.querySelectorAll<HTMLAnchorElement>(
-    '#project-details-launch-cta, #project-details-launch-cta-mobile',
+    '.project-details-launch-cta[data-internal-launch="true"]',
   );
   for (const anchor of Array.from(ctaAnchors)) {
-    if (anchor.target === '_blank') continue; // external — native behaviour is correct
     const onCtaClick = (event: MouseEvent): void => {
       if (event.defaultPrevented || event.button !== 0) return;
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -619,19 +621,29 @@ function attachInteractions(args: InteractionDeps): () => void {
     cleanups.push(() => anchor.removeEventListener('click', onCtaClick));
   }
 
-  // On mobile (or reduced motion) we do NOT hijack — native vertical scroll
-  // handles the stacked layout. Reveal everything (and play media) and bail.
-  if (isMobile() || reduced || !moveContainer || !wrapper) {
+  // On mobile we do NOT hijack — native vertical scroll handles the stacked
+  // layout. Reveal everything (and play media) and bail. A NON-mobile
+  // reduced-motion pass must NOT bail: the CSS keeps #project-details
+  // overflow:hidden above 812px, so without the input layer below the gallery
+  // would be unreachable by any input — it falls through instead and runs in
+  // "instant" mode (direct position writes, no smoothing).
+  if (isMobile() || !moveContainer || !wrapper) {
     for (const item of items) {
       item.style.visibility = 'visible';
-      void item.querySelector('video')?.play().catch(() => {});
+      // WCAG 2.2.2: never force-play video under reduced motion — the poster /
+      // first frame (preload="metadata") stands in.
+      if (!reduced)
+        void item
+          .querySelector('video')
+          ?.play()
+          .catch(() => {});
     }
     // The next-project preview can't be scrubbed here (no scroll-hijack). On
     // mobile the CSS reflows it into a teaser card at the bottom of the stack —
     // make that card tap/keyboard operable so the advance still works. On a
-    // NON-mobile reduced-motion pass the preview is still an absolute overlay
-    // (top:0, full height), so keep it hidden exactly like drivePreview would,
-    // or its giant next-title covers the gallery.
+    // NON-mobile bail (gallery elements missing) the preview is still an
+    // absolute overlay (top:0, full height), so keep it hidden exactly like
+    // drivePreview would, or its giant next-title covers the gallery.
     const preview = root.querySelector<HTMLElement>('#project-details-preview');
     if (preview) {
       const nextSlug = getNext();
@@ -666,6 +678,11 @@ function attachInteractions(args: InteractionDeps): () => void {
   // Kill any in-flight quickTo tween on close so it can't fire after the DOM
   // is rebuilt / innerHTML cleared.
   cleanups.push(() => gsap.killTweensOf(moveContainer));
+
+  // Reduced-motion desktop keeps the FULL input layer (wheel/drag/keyboard +
+  // next-project advance) but writes targetX straight through each tick — no
+  // lerp, no quickTo smoothing, no momentum.
+  const instant = reduced;
 
   let scrollX = 0; // current smoothed translate
   let targetX = 0; // wheel/drag target translate
@@ -764,7 +781,13 @@ function attachInteractions(args: InteractionDeps): () => void {
       if (left < right) {
         item.style.visibility = 'visible';
         revealedCount++;
-        void item.querySelector('video')?.play().catch(() => {});
+        // WCAG 2.2.2: never force-play video under reduced motion — the
+        // poster / first frame (preload="metadata") stands in.
+        if (!reduced)
+          void item
+            .querySelector('video')
+            ?.play()
+            .catch(() => {});
         if (!reduced) {
           gsap.fromTo(
             item,
@@ -792,6 +815,13 @@ function attachInteractions(args: InteractionDeps): () => void {
   let lastPointerX = 0;
   const onPointerDown = (event: PointerEvent): void => {
     if (isMobile()) return; // native vertical scroll once the CSS stacks
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      target.closest('a, button, input, textarea, select, summary, [role="button"], [role="link"]')
+    ) {
+      return;
+    }
     dragging = true;
     lastPointerX = event.clientX;
     root.setPointerCapture?.(event.pointerId);
@@ -889,8 +919,16 @@ function attachInteractions(args: InteractionDeps): () => void {
 
   // ---- render loop (smooth translate + reveal + preview feedback + decay) ----
   const tick = (_time: number, deltaTime: number): void => {
-    scrollX += (-targetX - scrollX) * 0.12;
-    setX(scrollX);
+    if (instant) {
+      // Reduced motion: apply the target directly — no lerp, no quickTo.
+      if (scrollX !== -targetX) {
+        scrollX = -targetX;
+        gsap.set(moveContainer, { x: scrollX });
+      }
+    } else {
+      scrollX += (-targetX - scrollX) * 0.12;
+      setX(scrollX);
+    }
     revealVisible();
     // Auto-decay: an abandoned mid-fill bar (user stopped scrolling with the
     // preview partway open) drains back to 0 on its own instead of sticking

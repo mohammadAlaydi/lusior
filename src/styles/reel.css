@@ -330,6 +330,41 @@
   pointer-events: none;
 }
 
+/* A persistent inline control gives the looping decorative reel a clear,
+   keyboard-accessible WCAG 2.2.2 pause path without competing with the
+   separate full-screen "watch" affordance. */
+#reel-pause {
+  position: absolute;
+  right: clamp(0.75rem, 1.5vw, 1.5rem);
+  bottom: clamp(0.75rem, 1.5vw, 1.5rem);
+  z-index: 2;
+  min-width: 9.5rem;
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-white) 75%, transparent);
+  border-radius: 999px;
+  color: var(--color-white);
+  background: rgb(13 14 19 / 78%);
+  font: 500 0.75rem/1 inherit;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+#reel-pause:hover {
+  color: var(--color-black);
+  background: var(--color-white);
+}
+
+#reel-pause:focus-visible {
+  outline: 3px solid var(--color-white);
+  outline-offset: 3px;
+}
+
 .reel-overlay-word {
   font-size: 9vw;
   line-height: 1;
@@ -443,5 +478,20 @@
 
   #reel-tint {
     display: none;
+  }
+
+  /* CTA + watch button: hover states still swap, but snap instead of animate */
+  #reel-cta,
+  #reel-cta-dot,
+  #reel-cta-text,
+  #reel-cta-arrow,
+  #reel-watch-base,
+  #reel-watch-fill,
+  #reel-watch svg {
+    transition-duration: 0.01ms;
+  }
+
+  #reel-pause {
+    transition: none;
   }
 }

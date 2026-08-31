@@ -30,11 +30,7 @@ export const newsletterSchema = z.object({
 export const contactSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(MAX_NAME, 'Name is too long'),
   email: emailSchema,
-  message: z
-    .string()
-    .trim()
-    .min(1, 'Message is required')
-    .max(MAX_MESSAGE, 'Message is too long'),
+  message: z.string().trim().min(1, 'Message is required').max(MAX_MESSAGE, 'Message is too long'),
 });
 
 /** Cleaned, typed payloads inferred straight from the schemas. */
@@ -42,9 +38,7 @@ export type NewsletterInput = z.infer<typeof newsletterSchema>;
 export type ContactInput = z.infer<typeof contactSchema>;
 
 /** Successful parse carries the sanitized value; failure carries field names. */
-export type ParseResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; fields: string[] };
+export type ParseResult<T> = { ok: true; value: T } | { ok: false; fields: string[] };
 
 /**
  * Run a schema over unknown input. On failure we surface only the offending

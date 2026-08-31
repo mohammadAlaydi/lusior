@@ -1,3 +1,5 @@
+import { getQualityProfile } from '../core/quality';
+
 /**
  * Site-wide cursor smoke trail.
  *
@@ -74,8 +76,6 @@ void main() {
 }
 `;
 
-const SIM_DOWNSCALE = 4;
-
 export class TrailCursor {
   private readonly canvas: HTMLCanvasElement;
   private readonly gl: WebGLRenderingContext;
@@ -91,10 +91,14 @@ export class TrailCursor {
   private energy = 0;
   private rafId = 0;
   private startTime = performance.now();
+  private running = false;
+  private suspended = false;
+  private readonly abort = new AbortController();
+  private readonly quality = getQualityProfile();
 
   static create(): TrailCursor | null {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
-    if (window.matchMedia('(pointer: coarse)').matches) return null;
+    const quality = getQualityProfile();
+    if (quality.reducedMotion || quality.coarsePointer) return null;
     try {
       return new TrailCursor();
     } catch {
@@ -130,32 +134,47 @@ export class TrailCursor {
 
     this.resize();
     this.bind();
-    this.rafId = requestAnimationFrame(this.loop);
+    this.updateRunState();
   }
 
   dispose(): void {
     cancelAnimationFrame(this.rafId);
+    this.abort.abort();
     this.canvas.remove();
   }
 
-  private bind(): void {
-    window.addEventListener('pointermove', (event) => {
-      this.mouse = {
-        x: event.clientX / window.innerWidth,
-        y: 1 - event.clientY / window.innerHeight,
-      };
-      if (!this.hasPointer) {
-        this.lastMouse = { ...this.mouse };
-        this.hasPointer = true;
-      }
-    });
+  /** Pause/resume the trail when a foreground modal/project owns the screen. */
+  setSuspended(suspended: boolean): void {
+    if (this.suspended === suspended) return;
+    this.suspended = suspended;
+    this.updateRunState();
+  }
 
-    window.addEventListener('resize', () => this.resize());
+  private bind(): void {
+    const { signal } = this.abort;
+    window.addEventListener(
+      'pointermove',
+      (event) => {
+        this.mouse = {
+          x: event.clientX / window.innerWidth,
+          y: 1 - event.clientY / window.innerHeight,
+        };
+        if (!this.hasPointer) {
+          this.lastMouse = { ...this.mouse };
+          this.hasPointer = true;
+        }
+      },
+      { signal },
+    );
+
+    window.addEventListener('resize', () => this.resize(), { signal });
+    document.addEventListener('visibilitychange', () => this.updateRunState(), { signal });
   }
 
   private resize(): void {
-    const w = Math.max(1, Math.floor(window.innerWidth / SIM_DOWNSCALE));
-    const h = Math.max(1, Math.floor(window.innerHeight / SIM_DOWNSCALE));
+    const downscale = this.quality.trailSimulationDownscale;
+    const w = Math.max(1, Math.floor(window.innerWidth / downscale));
+    const h = Math.max(1, Math.floor(window.innerHeight / downscale));
     this.canvas.width = w;
     this.canvas.height = h;
 
@@ -181,6 +200,7 @@ export class TrailCursor {
   }
 
   private readonly loop = (): void => {
+    if (!this.running) return;
     this.velocity = {
       x: this.mouse.x - this.lastMouse.x,
       y: this.mouse.y - this.lastMouse.y,
@@ -196,6 +216,20 @@ export class TrailCursor {
     }
     this.rafId = requestAnimationFrame(this.loop);
   };
+
+  /** Stop all animation work in a background tab and resume without a time jump. */
+  private updateRunState(): void {
+    const shouldRun = document.visibilityState === 'visible' && !this.suspended;
+    if (shouldRun === this.running) return;
+    this.running = shouldRun;
+    if (shouldRun) {
+      this.startTime = performance.now();
+      this.rafId = requestAnimationFrame(this.loop);
+    } else {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = 0;
+    }
+  }
 
   private step(): void {
     const gl = this.gl;
